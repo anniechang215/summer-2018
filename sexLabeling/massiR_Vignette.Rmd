@@ -1,0 +1,7 @@
+```{r}
+data(massi.test.dataset)
+# The included gene expression data is composed of 60 samples and 1026 probes as a data.frame object
+data(massi.test.probes)
+# The included list of Y chromosome probes contains probe identifiers as row names in the data.frame class
+```
+

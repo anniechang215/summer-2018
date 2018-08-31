@@ -1,0 +1,81 @@
+---
+title: "Explore CREEDS Part 1"
+output: html_notebook
+---
+Download CREEDS data: http://amp.pharm.mssm.edu/CREEDS/#downloads
+  Download all metadata files except for DrugMatrix
+
+Read in CREEDS data
+```{r}
+# Genes: Manual and Auto
+gene_pert_manual <- read.csv("data/single_gene_perturbations-v1.0.csv", stringsAsFactors = FALSE)
+gene_pert_auto <- read.csv("data/single_gene_perturbations-p1.0.csv", stringsAsFactors = FALSE)
+
+# Drugs: Manual and Auto
+drug_pert_manual <- read.csv("data/single_drug_perturbations-v1.0.csv", stringsAsFactors = FALSE)
+drug_pert_auto <- read.csv("data/single_drug_perturbations-p1.0.csv", stringsAsFactors = FALSE)
+
+# Diseases: Manual and Auto
+disease_pert_manual <- read.csv("data/disease_signatures-v1.0.csv", stringsAsFactors = FALSE)
+disease_pert_auto <- read.csv("data/disease_signatures-p1.0.csv", stringsAsFactors = FALSE)
+```
+
+What are the rows?
+# The rows are the numbers corresponding to all of the genes studied in the study.
+```{r}
+rownames(gene_pert_manual)
+colnames(gene_pert_manual)
+```
+Which is a unique identifier?
+# The ID is a unique identifier
+# LOOK AT COMMANDS IN R:
+Which identifiers can be found in multiple places?
+# Cell type, curator, GEO ID, HS Gene Symbol, MM Gene Symbol, Pert Type, Platform
+
+What are the columns?
+# The columns are the labels that contain information about each gene!
+How are the columns different between the manual and curated data?
+# The manually curated data contains more information. It has labels including umls_cui, do_id, and curator.
+How are the columns different between different types of data?
+# Depending on whether it is a disease, drug, or gene, the data contains slightly different labels.
+
+What are elements separated by?
+# not sure. Commas?
+  
+Count how many drug_name, pert_ids, and ctrl_ids are in each row:
+# Write a function to count the # of IDs in a field (input: string, output: number of IDs in string)
+# Returns a list of the number of IDs for all the genes in the study for a specific field
+```{r}
+allNumIDs <- sapply(fileNames, function(fileName, field)) {
+    # splits the term in the field into individual IDs
+    allIDs <- strsplit(fileName$field, "|")
+    # returns the total number of terms in the field
+    return length(allIDs)
+}
+
+sapply(df$col, function(e1)) {
+  
+}
+# How to call the function specifically for the filename and field? Esp. b/c it works through sapply.
+
+```
+Add three columns: ndrugs, npert, nctl to the data frame
+# Use mutate() to do this
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+plot(cars)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+```{r}
+for (i in 1:5) {}
+```
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+

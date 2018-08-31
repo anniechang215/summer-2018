@@ -1,0 +1,76 @@
+```{r}
+require('MetaIntegrator')
+require('tidyverse')
+gse <- getGEOData("GSE16581")
+
+#studyPlot <- getClusterPlots(gse)
+# downloads the expression data
+#getClusterPlots <- function(gse) {
+  expData <- gse$originalData[[1]]$expr
+  keys <- gse$originalData[[1]]$keys
+  keys <- as.data.frame(keys)
+  keys$probe <- rownames(keys)
+  xist.probes <- filter(keys, keys == 'XIST')
+  rps4y1.probes <- filter(keys, keys == 'RPS4Y1')
+  
+  # gets the xist vals, usu. the mean
+  xist.vals <- expData[xist.probes$probe,]
+  xist.vals <- t(xist.vals)
+  
+  if (length(xist.vals[, -length(xist.vals)]) > 1){ 
+    xist.vals <- as.data.frame(rowMeans(xist.vals[, -length(xist.vals)], na.rm=TRUE))
+    names(xist.vals) <- c("xist.mean")
+    xist.vals$samp_ids <- rownames(xist.vals)
+  }
+  
+  # gets the rps4y1 vals
+  rps4y1.vals <- expData[rps4y1.probes$probe,]
+  rps4y1.vals <- as.data.frame(t(rps4y1.vals))
+  row.names(rps4y1.vals) <- rps4y1.probes$probe
+  
+  #xist.vals <- as.data.frame(t(xist.vals))
+  rps4y1.vals <- as.data.frame(t(rps4y1.vals))
+  
+  xist.vals$samp_ids <- rownames(xist.vals)
+  rps4y1.vals$samp_ids <- rownames(rps4y1.vals)
+  
+  combined_df <- inner_join(xist.vals, rps4y1.vals, by = "samp_ids")
+  
+  # gets clusters
+  clustering.df <- t(expData[c(xist.probes$probe, rps4y1.probes$probe),])
+  clustering.df <- na.omit(clustering.df)
+  cl <- kmeans(clustering.df, 2)
+  cluster.labels <- whichClusters(cl$centers)
+  clusters.df <- (as.data.frame(cl$cluster))
+  names(clusters.df)[1] <- "cluster"
+  clusters.df$samp_ids <- rownames(clusters.df)
+  
+  combined_df <- as.data.frame(full_join(combined_df, clusters.df, by = "samp_ids"))
+  combined_df$predicted_sex <- cluster.labels[combined_df$cluster]
+  #View(combined_df)
+  
+  sexFirstEntry <- combined_df[1,5]
+  clusterFirstEntry <- combined_df[1,4]
+  if (sexFirstEntry == "female") { 
+    my.colors <- ifelse(combined_df$cluster == clusterFirstEntry, "red", "blue") 
+  } else { my.colors <- ifelse(combined_df$cluster == clusterFirstEntry, "blue", "red") }
+  
+  #my.colors <- ifelse(combined_df$cluster == 1, "red", "blue") # 1, 2
+  
+  plot(combined_df$xist.mean, combined_df$`201909_at`, xlab = "XIST", ylab = "RPS4Y1", col = my.colors) #c("red", "blue")[as.factor(combined_df$cluster)])
+  #return(plot)
+#}
+```
+
+```{r}
+ 
+whichClusters <- function(x) {
+  if (x[1] > x[2]) {
+    return (c("female", "male"))
+  }
+  else {
+    return (c("male", "female"))
+  }
+}
+```
+

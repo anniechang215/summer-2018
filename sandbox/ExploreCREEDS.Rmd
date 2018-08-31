@@ -1,0 +1,225 @@
+
+Code for loading and doing exploratory analysis of CREEDS Data
+
+Research goals:
+* Examine CREEDS drug data, label it
+* Try to figure out if we can use this
+
+Learning goals:
+* Reading in + examination of data in R
+* Introduction to tidy data, relational data operations
+
+Load packages
+```{r}
+require('tidyverse')
+```
+
+### PART ONE - CREEDS Datasets
+
+Download CREEDS data: http://amp.pharm.mssm.edu/CREEDS/#downloads
+* Download the metadata files for all except DrugMatrix - this is six files
+* Move this data to the data directory
+
+Read in CREEDS data
+* What are the rows?
+  + Which is a unique identifier?
+  + Which identifiers can be present in multiple places
+* What are the columns?
+  + How are the columns different between the manual and the curated data?
+  + How about between the different types of data
+* What are elements separated by?
+
+Suggested functions: ncol, nrow, colnames, head, view
+
+```{r}
+# read in the data
+#  - here is the example for drugs (automated version), do the same for disease and gene data
+#  - use the "stringsAsFactors = FALSE" flag
+drug_pert_auto <- read.csv("data/single_drug_perturbations-p1.0.csv", stringsAsFactors = FALSE)
+
+```
+
+Count how many drug_name (for drug data), pert_ids, and ctrl_ids are in each row
+* write a function to count the number of ids in a field (input: string, output: number of IDs in the string)
+  + ex. input: "GSM26742|GSM26743", output: 2
+  + use strsplit and length
+* Add three columns : ndrugs (for drug data), npert, nctl to the data frame
+* When writing these functions, think about how you would do it in a for loop, and then 
+```{r}
+
+```
+
+
+Make data frames with studies that have more than 8 treatment or control samples
+* Use `filter()`
+* We will be using this for downstream analysis
+
+```{r}
+
+```
+
+
+
+
+### PART TWO - CREEDS Drug Data
+
+#### Manual Examination: 
+**skip this, we are asking about**
+* Use this file: https://drive.google.com/drive/folders/16CWFbGd6JU827PDsqcF9vVlkdMF_wPXN?usp=sharing 
+
+Goal: Try to figure out what to do with multiple drugs in the same dataset:
+* Order the spreadsheet by geo_id
+* Look up 10 studies in GEO that have multiple drugs in drug_name
+* Are both applied? Only one in different samples?
+* Does this correspond to the listed sample ids?
+* What are your ideas on how to deal with this?
+
+In the spreadsheet
+* Add a column "mult-drugs" and label these with "same" (both drugs in same sample), "separate" (different drugs in different samples)
+* Add a column for "notes" - add other observations here 
+
+
+#### Data analysis:
+
+##### Goal: Add a column 'drugbank_id' to the automated CREEDS drug data (already present for manual data)
+
+Pre-requisites:
+* Read about tidy data
+  + https://github.com/jennybc/lotr-tidy#readme 
+  + http://r4ds.had.co.nz/tidy-data.html
+* Read about relational data and joins:
+ + http://r4ds.had.co.nz/relational-data.html#introduction-7
+* Start working through the stats545 tutorial data analysis section 1: http://stat545.com/topics.html
+ + you don't need to do everything, but it is helpful 
+
+We are going to reformat the DrugBank and CREEDS data slightly to make it more tidy so that we can run a `join()`.
+
+What aspects of the data are tidy? Think about this.
+* Tidy: It has been separated out into drug instances (`id` column), making it long, and these list attributes of the instance are listed out and are not unique (ex. `geo_id`)
+* Not tidy: There are multiple items per field in cell_type, ctrl_ids, drug_Name, pert_ids, organism, platform - these should be separated out
+  + Note: do not do this for now, just focus on the columns as we need them 
+  + Also, the mapping between samples and these multi-labels is something we have yet to resolve (we will ask them)
+
+###### Reformatting the DrugBank data
+
+* Read in the drugbank data you were working with from DrugLabels.Rmd
+* Create a new data frame "drug_mapping" with a subset of the columns: Common.name, Synonyms, DrugBank ID
+
+| Common.Name | Synonyms  | DrugBank ID |
+| ----------- | --------- | ----------- |
+|     A      | a "\\|" aa  | DB1001 |
+
+
+
+Use `separate_rows()` to separate out the synonyms
+  + make sure all the synonyms are lower case
+
+| Common.Name | Synonyms  | DrugBank ID |
+| ----------- | --------- | ----------- |
+|     A      | a         | DB1001 |
+|     A      | aa        | DB1001 |
+
+Since we are searching for the synonyms or common names, we need to condense this into a data.frame that has two columns:'drug_name' and 'drugbank_id'.
+To do this, I would run something like:
+```{r}
+df1 <- select(df ,c("Synonyms", "DrugBank ID"))
+df2 <- select(df,c("drug_name", "DrugBank ID"))
+
+# then re-name the columns of the first data frame so they are the same
+
+# then run `rbind()` to put the two together
+```
+
+The output should look like this:
+
+drug_name | DrugBank ID
+--------- | -----------
+ a        | DB1001
+ aa       | DB1001
+ A        | DB1001
+
+
+###### Reformatting the CREEDS data
+
+* Use `separate_rows()` on the CREEDS data to separate out multiple drug names (see above - this is similar to what we did with synonyms). It will make the data longer, and allow us to run a `join()`
+
+###### Putting the data together
+* We want to do a `left_join()` where x is a data frame of the (tidied) CREEDS data and y is the two-column "drug_mapping"
+  + Make sure the CREEDS data drug field is separated into multiple rows (see previous step)
+  + Why do we want to use a left join vs a different join?
+  + What should we put in the "by" field? (drug_name or drugbank_id? why?)
+  + What does the result look like?
+
+```{r}
+
+
+```
+
+
+##### Look at drug instance mapping to drugBank
+
+Which drug instances (`id` column) do not map to DrugBank?
+* look for NAs in the drugbank_id field - use `is.na()` and then figure out how to count these. You will need to `group_by` the `id` first and then count the number of NAs:
+  + Info about `group_by()` http://r4ds.had.co.nz/transform.html#grouped-summaries-with-summarise 
+
+* What are the drug names for the drug instances with no mapping? Make a list, use `table()` to count how frequent these are and look at the table columns for the set of names. Do they make sense? (hint: this will probably contain "inhibitor", etc.)
+* Write this list out to a file
+```{r}
+
+
+```
+
+
+
+##### Identify studies
+
+Now, we are going to do a more thorough check for studies with >=8 samples in the data.
+We are using studies with >=8 samples because we need to find studies that have at least four males and four females of the same condition to use in our meta-analysis. Once we identify these studies, we will sex-label and check them to see if we can use them. 
+
+It is possible that there are multiple rows of one study (GSE) with different (GSMs).  
+For example - GSE50830 is in drug:P922, drug:P923 and many other rows.
+ * Use `group_by()` to group by the study (`geo_id`) and then count the number of control samples (GSMs in `ctrl_ids`) in each study. You should be able to use your `nctl` column you created, and sum over this by study.
+  + Write these studies out to a file "ctl_studies.txt"
+  + Note: this will not work perfectly - think about what would happen if there were multiple organisms or cell types in a GSE - why wouldn't this work? 
+ * Then use `group_by()` to group by both `geo_id` and `drug_name` and count the number of perturbed samples (GSMs in `pert_ids`) in each study with a particular drug. The `ndrug` column will come in handy. 
+  + Why are we grouping by drugs here?
+  + Write this out to a file "drug_studies.txt"
+ * Look up a couple of these studies that are in humans - we might start using these!
+
+```{r}
+
+```
+
+
+
+
+
+##### Exploratory analysis
+
+Think about how to organize/examine the data
+* How many controls are on average in a study? How many samples? (use npert, nctl for this)
+* Which drugs are present?
+* How many instances of each drug?
+  + Make a histogram using `geom_histogram` from ggplot2 - https://ggplot2.tidyverse.org/reference/geom_histogram.html
+* Look at all of this separated by organism
+* What other questions do you have about the data?
+  + Make another histogram about some other aspect of the data
+```{r}
+
+
+```
+
+
+###### Put together manual + automated data (w/ drugbank labels added in the previous step)
+* How many studies are in both?
+  + run an `intersect()` on the manual$geo_id and the automated$geo_id
+* Add a column 'source' to each data frame indicating the source of the data
+  + i.e. "manual" or "auto"
+* Which are the columns that are shared?
+  + Select the shared columns in each data frame
+  + use `rbind` to put the two datasets together
+```{r}
+
+```
+
+

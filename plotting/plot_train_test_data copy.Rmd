@@ -1,0 +1,111 @@
+### script for plotting the clusters for the training and testing data for the classifier
+
+#### plot for the train data
+```{r}
+# gets the xist.vals
+xist.vals <- x.train.updated[, c(1,2,3,4,5,6,10)]
+rownames(xist.vals) <- xist.vals$samp_ids
+
+if (length(xist.vals[, -length(xist.vals)]) > 1){ 
+  xist.vals <- as.data.frame(rowMeans(xist.vals[, -length(xist.vals)], na.rm=TRUE))
+  names(xist.vals) <- c("xist.mean")
+  xist.vals$samp_ids <- rownames(xist.vals)
+}
+
+# gets the rps4y1 values
+rps4y1.vals <- x.train.updated[, c(8,10)]
+colnames(rps4y1.vals)[1] <- "rps4y1.val"
+rownames(rps4y1.vals) <- rps4y1.vals$samp_ids
+
+# gets the sex labels (from y.train in sex_labeling_updated.Rmd file)
+sex_labels_train <- y.train.updated[,1:2]
+names(sex_labels_train)[1] <- c("samp_ids")
+
+# puts together the information
+combined_df <- inner_join(xist.vals, rps4y1.vals, sex_labels_train, by = "samp_ids")
+
+write.csv(clustering_df, 'clustering_df.csv')
+clustering_df <- read.csv('clustering_df.csv')
+# remove the extra column
+clustering_df <- clustering_df[,2:ncol(clustering_df)]
+
+# remove the extra "X"s in the column names
+colnames(clustering_df) <- sapply(colnames(clustering_df), function(x) { substr(x, 2, nchar(x)) } )
+colnames(clustering_df)[10] <- "samp_ids"
+rownames(clustering_df) <- clustering_df$samp_ids
+clustering_df <- clustering_df[,1:9]
+
+cl <- kmeans(clustering_df, 2)
+cluster.labels <- whichClusters(cl$centers)
+
+clusters.df <- (as.data.frame(cl$cluster))
+names(clusters.df)[1] <- "cluster"
+clusters.df$samp_ids <- rownames(clusters.df)
+
+combined_df <- as.data.frame(full_join(combined_df, clusters.df, by = "samp_ids"))
+combined_df$pred_sex <- cluster.labels[combined_df$cluster]
+
+# plots data into clusters
+plot(combined_df$xist.mean, combined_df$rps4y1.val, xlab = "XIST", ylab = "RPS4Y1", col = c("red", "blue")[as.factor(combined_df$cluster)])
+# saves plot as image
+#### ugh how
+```
+
+### plot for the test data
+```{r}
+# gets the xist.vals
+xist.vals <- x.test.updated[, 3:10]
+rownames(xist.vals) <- xist.vals$samp_ids
+samp_ids <- xist.vals$samp_ids
+
+if (length(xist.vals[, -length(xist.vals)]) > 1){
+  sapply(xist.vals[,1:7], function(x) as.numeric(as.character(x)))
+  xist.vals <- as.data.frame(rowMeans(xist.vals[, -length(xist.vals)], na.rm=TRUE))
+  names(xist.vals) <- c("xist.mean")
+  xist.vals$samp_ids <- rownames(xist.vals)
+}
+
+# gets the rps4y1 values
+rps4y1.vals <- x.test[,c(1,10)]
+colnames(rps4y1.vals)[1] <- "rps4y1.val"
+rownames(rps4y1.vals) <- rps4y1.vals$samp_ids
+
+# gets the sex labels (from y.train in sex_labeling_updated.Rmd file)
+sex_labels_train <- y.test
+
+# puts together the information
+combined_df <- inner_join(xist.vals, rps4y1.vals, sex_labels_train, by = "samp_ids")
+
+clustering_df <- x.test
+rownames(clustering_df) <- x.test$samp_ids
+
+#write.csv(clustering_df, 'clustering_df.csv')
+clustering_df <- read.csv('clustering_df.csv')
+# remove the extra column
+clustering_df <- clustering_df[,2:ncol(clustering_df)]
+
+# remove the extra "X"s in the column names
+colnames(clustering_df) <- sapply(colnames(clustering_df), function(x) { substr(x, 2, nchar(x)) } )
+colnames(clustering_df)[10] <- "samp_ids"
+
+rownames(clustering_df) <- clustering_df$samp_ids
+clustering_df <- clustering_df[,1:9]
+
+cl <- kmeans(clustering_df, 2)
+cluster.labels <- whichClusters(cl$centers)
+
+clusters.df <- (as.data.frame(cl$cluster))
+names(clusters.df)[1] <- "cluster"
+clusters.df$samp_ids <- rownames(clusters.df)
+
+combined_df <- as.data.frame(full_join(combined_df, clusters.df, by = "samp_ids"))
+combined_df$pred_sex <- cluster.labels[combined_df$cluster]
+
+# plots data into clusters
+plot(combined_df$xist.mean, combined_df$rps4y1.val, xlab = "XIST", ylab = "RPS4Y1", col = c("red", "blue")[as.factor(combined_df$cluster)])
+```
+
+
+
+
+

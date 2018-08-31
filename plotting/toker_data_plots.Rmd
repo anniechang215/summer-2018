@@ -1,0 +1,155 @@
+# plots the updated Toker training and testing data
+
+```{r}
+require('MetaIntegrator')
+require('tidyverse')
+gse <- getGEOData("GSE22138")
+keys <- gse$originalData[[1]]$keys
+keys <- as.data.frame(na.omit(keys))
+keys$probe <- rownames(keys)
+
+# TRAINING DATA PLOT
+x.train.toker <- read.csv("/Users/anniechang/Desktop/Research/toker_class_input/x_train_toker.csv")
+
+colnames(x.train.toker) <- sapply(colnames(x.train.toker), function(x) { substr(x, 2, nchar(x)) } )
+colnames(x.train.toker)[ncol(x.train.toker)] <- "samp_ids"
+probesOfInterest <- filter(keys, probe %in% colnames(x.train.toker)[1:ncol(x.train.toker)-1])
+
+# get expression levels for x-chromosome genes
+xchr.genes <- c("XIST", "RPS4X", "ZFX", "PUDP", "KDM6A", "JPX", "KDM5C", "DDX3X", "ZRSR2", "EIF2S3")
+xchr.probes <- filter(probesOfInterest, keys %in% xchr.genes)
+xchr.probes.interest <- c(xchr.probes$probe, "samp_ids")
+xchr.vals <- x.train.toker[, xchr.probes.interest]
+
+# get expression levels for y-chromosome genes
+ychr.genes <- read.csv("/Users/anniechang/Desktop/Research/ychr.genes.csv")
+ychr.genes <- as.data.frame(ychr.genes[, 2:ncol(ychr.genes)])
+names(ychr.genes) <- "gene"
+ychr.probes <- filter(probesOfInterest, keys %in% ychr.genes$gene)
+ychr.probes.interest <- c(ychr.probes$probe, "samp_ids")
+ychr.vals <- x.train.toker[, ychr.probes.interest]
+
+if (length(xchr.vals[, -length(xchr.vals)]) > 1){ 
+  xchr.vals.means <- as.data.frame(rowMeans(xchr.vals[, -length(xchr.vals)], na.rm=TRUE))
+  xchr.vals <- cbind(xchr.vals.means, xchr.vals$samp_ids)
+  colnames(xchr.vals) <- c("xchr.mean", "samp_ids")
+}
+
+if (length(ychr.vals[, -length(ychr.vals)]) > 1){ 
+  ychr.vals.means <- as.data.frame(rowMeans(ychr.vals[, -length(ychr.vals)], na.rm=TRUE))
+  ychr.vals <- cbind(ychr.vals.means, ychr.vals$samp_ids)
+  colnames(ychr.vals) <- c("ychr.mean", "samp_ids")
+}
+
+y.train.toker <- read.csv("/Users/anniechang/Desktop/Research/toker_class_input/y_train_toker.csv")
+
+combined.df <- inner_join(xchr.vals, ychr.vals, y.train.toker, by = "samp_ids")
+clustering.probes.interest <- c(probesOfInterest$probe, "samp_ids")
+clustering.df <- x.train.toker[, clustering.probes.interest]
+rownames(clustering.df) <- x.train.toker$samp_ids
+clustering.df <- clustering.df[1:ncol(clustering.df)-1]
+
+cl <- kmeans(clustering.df, 2)
+cluster.labels <- whichClusters(cl$centers)
+clusters.df <- (as.data.frame(cl$cluster))
+names(clusters.df)[1] <- "cluster"
+clusters.df$samp_ids <- rownames(clusters.df)
+
+combined.df <- as.data.frame(full_join(combined.df, clusters.df, by = "samp_ids"))
+combined.df$pred_sex <- cluster.labels[combined.df$cluster]
+
+sexFirstEntry <- combined.df[1,5]
+clusterFirstEntry <- combined_df[1,4]
+if (sexFirstEntry == "female") { my.colors <- ifelse(combined_df$cluster == clusterFirstEntry, "red", "blue") 
+  } else { my.colors <- ifelse(combined_df$cluster == clusterFirstEntry, "blue", "red") }
+  
+plot(combined.df$xchr.mean, combined.df$ychr.mean, xlab = "XIST", ylab = "RPS4Y1", col = my.colors) # updatedTokerTrainCluster.png
+```
+
+```{r}
+### CLUSTER FOR TESTING DATA
+x.test.toker <- read.csv("/Users/anniechang/Desktop/Research/toker_class_input/x_test_toker.csv")
+colnames(x.test.toker) <- sapply(colnames(x.test.toker), function(x) { substr(x, 2, nchar(x)) } )
+colnames(x.test.toker)[ncol(x.test.toker)] <- "samp_ids"
+names(keys) <- c("gene", "probe")
+
+# get expression levels for x-chromosome genes
+xist.probes <- filter(keys, gene == "XIST")
+xist.vals <- x.test.toker[, xist.probes$probe]
+xist.vals <- cbind(xist.vals, x.test.toker$samp_ids)
+colnames(xist.vals)[ncol(xist.vals)] <- "samp_ids"
+
+# get expression levels for y-chromosome genes
+rps4y1.probes <- filter(keys, gene == "RPS4Y1")
+rps4y1.vals <- as.data.frame(x.test.toker[, rps4y1.probes$probe])
+rps4y1.vals <- cbind(rps4y1.vals, x.test.toker$samp_ids)
+colnames(rps4y1.vals) <- c(rps4y1.probes$probe, "samp_ids")
+
+if (length(xist.vals[, -length(xist.vals)]) > 1){ 
+  xist.means <- as.data.frame(rowMeans(xist.vals[, -length(xist.vals)], na.rm=TRUE))
+  xist.vals <- cbind(xist.means, xist.vals$samp_ids)
+  colnames(xist.vals) <- c("xist.mean", "samp_ids")
+}
+
+y.test.toker <- read.csv("/Users/anniechang/Desktop/Research/toker_class_input/y_test_toker.csv")
+
+combined.df <- inner_join(xist.vals, rps4y1.vals, y.test.toker, by = "samp_ids")
+clustering.probes.interest <- c(xist.probes$probe, rps4y1.probes$probe, "samp_ids")
+clustering.df <- x.test.toker[, clustering.probes.interest]
+rownames(clustering.df) <- x.test.toker$samp_ids
+clustering.df <- clustering.df[1:ncol(clustering.df)-1]
+
+cl <- kmeans(clustering.df, 2)
+cluster.labels <- whichClusters(cl$centers)
+clusters.df <- (as.data.frame(cl$cluster))
+names(clusters.df)[1] <- "cluster"
+clusters.df$samp_ids <- rownames(clusters.df)
+
+combined.df <- as.data.frame(full_join(combined.df, clusters.df, by = "samp_ids"))
+combined.df$pred_sex <- cluster.labels[combined.df$cluster]
+
+sexFirstEntry <- combined.df[1,5]
+clusterFirstEntry <- combined.df[1,4]
+if (sexFirstEntry == "female") { my.colors <- ifelse(combined.df$cluster == clusterFirstEntry, "red", "blue") 
+  } else { my.colors <- ifelse(combined.df$cluster == clusterFirstEntry, "blue", "red") }
+  
+plot(combined.df$xist.mean, combined.df$`201909_at`, xlab = "XIST", ylab = "RPS4Y1", col = my.colors, xlim = c(4,11), ylim = c(5,13)) # updatedTokerTrainCluster.png
+```
+
+```{r}
+## TRAIN DATA
+# Purpose of this code is to offset all the values so it can be input for feature selection
+x.train.toker <- read.csv("/Users/anniechang/Desktop/Research/toker_class_input/x_train_toker.csv")
+colNames <- colnames(x.train.toker[,1:ncol(x.train.toker)-1])
+for(i in colNames){
+  test <- rbind(test, min(x.train.toker[,i]))
+}
+lowestVal <- min(test)
+samp_ids_col <- as.data.frame(x.train.toker$samp_ids)
+x.train.toker <- x.train.toker[,1:ncol(x.train.toker)-1] - lowestVal
+x.train.toker <- cbind(x.train.toker, samp_ids_col)
+colnames(x.train.toker)[ncol(x.train.toker)] <- "samp_ids"
+
+write.csv(x.train.toker, 'x.train.toker.offset.csv')
+```
+
+```{r}
+## TEST DATA
+# Purpose of this code is to offset all the values so it can be input for feature selection
+x.test.toker <- read.csv("/Users/anniechang/Desktop/Research/toker_class_input/x_test_toker.csv")
+colNames <- colnames(x.test.toker[,1:ncol(x.test.toker)-1])
+for(i in colNames){
+  test <- rbind(test, min(x.test.toker[,i]))
+}
+lowestVal <- min(test)
+samp_ids_col <- as.data.frame(x.test.toker$samp_ids)
+x.test.toker <- x.test.toker[,1:ncol(x.test.toker)-1] - lowestVal
+x.test.toker <- cbind(x.test.toker, samp_ids_col)
+colnames(x.test.toker)[ncol(x.test.toker)] <- "samp_ids"
+
+write.csv(x.test.toker, 'x.test.toker.offset.csv')
+```
+
+
+
+

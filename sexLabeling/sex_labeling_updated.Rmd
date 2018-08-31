@@ -1,0 +1,197 @@
+### A function that accepts GSE ID and returns sex labels for all samples in that study
+This function automates the sex-labeling of a study
+# Input: Study IDs
+# Output: Sex Labels
+```{r}
+require('tidyverse')
+require('MetaIntegrator')
+gse <- getGEOData("GSE16385")
+```
+
+```{r}
+## Toker sex labeling
+train.df  <- do.call(rbind, lapply(list.gses.train, function(x) getSexLabelsFinal(getGEOData(x))))
+test.df  <- do.call(rbind, lapply(list.gses.test, function(x) getSexLabelsFinal(getGEOData(x))))
+
+y.train <- train.df[,c(2,6)]
+y.test <- test.df[,c(2,6)]
+
+x.train.file <- write.csv(x.train, '/Users/anniechang/Desktop/Research/x.train.csv')
+y.train.file <- write.csv(y.train, '/Users/anniechang/Desktop/Research/y.train.csv')
+
+x.test.file <- write.csv(x.test, '/Users/anniechang/Desktop/Research/x.test.csv')
+y.test.file <- write.csv(y.test, '/Users/anniechang/Desktop/Research/y.test.csv')
+
+# get the exprFrame of normalized data values
+require('Biobase')
+load("GSE50830_rmaBC.RData") # run this directly in the console
+my.dat4 <- exprs(eset.rma) # this too, just in case
+my.dat4 <- cbind(my.dat4, rownames(my.dat4)) # use cbind because it is a matrix
+my.dat4 <- as.data.frame(my.dat4) # this actually works! :o
+my.dat4 <- filter(my.dat4, V88 == '201909_at' | V88 == '206700_s_at' |
+                       V88 == '214218_s_at' | V88 == '221728_x_at' | 
+                       V88 == '224588_at' | V88 == '224589_at' |
+                       V88 == '224590_at' | V88 == '227671_at' | 
+                       V88 == '243712_at')
+my.dat <- cbind(my.dat, my.dat4)
+
+# just save the data frame of the gene expression (training data)
+train_data_initial <- write.csv(exprFrame, 'train_data_initial.csv')
+x.train <- read.csv('train_data_initial.csv')
+# remove the extra column
+x.train <- x.train[,2:ncol(x.train)]
+
+# remove the extra "X"s in the column names
+colnames(x.train) <- sapply(colnames(x.train), function(x) { substr(x, 2, nchar(x)) } )
+colnames(x.train)[10] <- "samp_ids"
+
+# save the testing data too
+test_data_initial <- write.csv(my.dat, 'test_data_initial.csv')
+x.test <- read.csv('test_data_initial.csv')
+# remove the extra column
+x.test <- x.test[,2:ncol(x.test)]
+
+# remove the extra "X"s in the column names
+colnames(x.test) <- sapply(colnames(x.test), function(x) { substr(x, 2, nchar(x)) } )
+colnames(x.test)[10] <- "samp_ids"
+
+hello <- getSexLabelsFinal(gse)
+
+getSexLabelsFinal <- function(gse) {
+  pData <- gse$originalData[[1]]$pheno
+  expData <- as.data.frame(na.omit(gse$originalData[[1]]$expr)) # expression data
+  expData$probe <- rownames(expData)
+
+  keys.vec <- gse$originalData[[1]]$keys # mapping of genes to probe IDs
+  keys.vec <- as.data.frame(keys.vec)
+  
+  names(keys.vec) <- c("gene")
+  keys.vec$probe <- rownames(keys.vec) # adds a column with the probe names to keys.vec
+  
+  # creates list of genes and probes for X and Y chromosomes
+  rps4y1.probe <- as.data.frame(filter(keys.vec, gene == 'RPS4Y1'))
+  xist.probe <- as.data.frame(filter(keys.vec, gene == 'XIST')) # contains xist genes and their corresponding probes
+  kdm5d.probe <- as.data.frame(filter(keys.vec, gene == 'KDM5D'))
+  
+  ### add a column to the probe data with the probe name
+  colnames(xist.probe) <- c("gene", "probe")
+  colnames(rps4y1.probe) <- c("gene", "probe")
+  colnames(kdm5d.probe) <- c("gene", "probe")
+  
+  # gets a list of expression level in each probe for X and Y chromosomes
+  if (length(rps4y1.probe[[1]]) != 0) { 
+    rps4y1.vals <- as.data.frame(expData[rps4y1.probe$probe, ])
+    rps4y1.vals <- rps4y1.vals[, 1:length(rps4y1.vals)-1]
+  }
+  
+  if (length(xist.probe[[1]] != 0)) { 
+    xist.vals <- as.data.frame(expData[xist.probe$probe, ])
+    xist.vals <- xist.vals[, 1:length(xist.vals)-1]
+  }
+  
+  if (length(kdm5d.probe[[1]]) != 0) { 
+    kdm5d.vals <- as.data.frame(expData[kdm5d.probe$probe, ])
+    kdm5d.vals <- kdm5d.vals[, 1:length(kdm5d.vals)-1]
+  }
+  
+  # gets the average of all expression data for a given sample
+  if (length(xist.probe[[1]]) > 1){ 
+    xist.vals <- as.data.frame(colMeans(xist.vals, na.rm=TRUE))
+    names(xist.vals) <- c("xist.mean")
+  }
+  if (length(rps4y1.probe[[1]]) > 1) { 
+    rps4y1.vals <- as.data.frame(colMeans(rps4y1.vals, na.rm=TRUE))
+    names(rps4y1.vals) <- c("rps4y1.mean")
+  }
+  
+  if (length(kdm5d.probe[[1]]) > 1) { 
+    kdm5d.vals <- as.data.frame(colMeans(kdm5d.vals, na.rm=TRUE))
+    names(kdm5d.vals) <- c("kdm5d.mean")
+  }
+  
+  if (nrow(xist.vals) == 1) {
+    xist.vals <- as.data.frame(t(xist.vals))
+  }
+
+  if (nrow(rps4y1.vals) == 1) {
+    rps4y1.vals <- as.data.frame(t(rps4y1.vals))
+  }
+
+  if (nrow(kdm5d.vals) == 1) {
+    kdm5d.vals <- as.data.frame(t(kdm5d.vals))
+  }
+  
+  xist.vals$samp_ids <- rownames(xist.vals)
+  rps4y1.vals$samp_ids <- rownames(rps4y1.vals)
+  kdm5d.vals$samp_ids <- rownames(kdm5d.vals)
+  
+  # so far, only runs clustering if xist.vals, rps4y1.vals, and kdm5d.vals exist and are filled with data:
+  if (length(xist.probe[[1]] != 0) & length(rps4y1.probe[[1]] != 0) & length(kdm5d.probe[[1]] != 0)) {
+    ssProbes.df <- full_join(xist.vals, rps4y1.vals, by = "samp_ids")
+    ssProbes.df <- full_join(ssProbes.df, kdm5d.vals)
+    ssProbes.df <- ssProbes.df[complete.cases(ssProbes.df),]
+    ssProbes.df$samp_ids <- as.character(ssProbes.df$samp_ids)
+  }
+  else {
+    print("One or more of the probe data (XIST, RPS4Y1, or KDM5D) are missing.")
+  }
+  
+  #cluster
+  clustering.df <- t(expData[c(xist.probe$probe, rps4y1.probe$probe, kdm5d.probe$probe),])
+  clustering.df <- clustering.df[1:nrow(clustering.df)-1,] # excludes the last row which contains probe data
+  
+  clustering.df <- na.omit(clustering.df)
+  View(clustering.df)
+  
+  #browser()
+  cl <- kmeans(clustering.df, 2)
+  cluster.labels <- whichClusters(cl$centers)
+  
+  clusters.df <- (as.data.frame(cl$cluster))
+  names(clusters.df)[1] <- "cluster"
+  clusters.df$samp_ids <- rownames(clusters.df)
+  
+  combined.df <- as.data.frame(full_join(ssProbes.df, clusters.df, by = "samp_ids"))
+  combined.df$pred_sex <- cluster.labels[combined.df$cluster]
+  
+  View(combined.df)
+  View(xist.vals)
+  
+  #plot(combined.df$xist.vals, combined.df$rps4y1.vals, xlab = "XIST", ylab = "RPS4Y1", col = c("red", "blue")[as.factor(combined.df$cluster)])
+  
+  return (combined.df)
+}
+# 
+# x_train <- train.df[c(2,1,3,4)]
+# x_train_file <- write.csv(x_train, 'x_train.csv')
+# 
+# y_train <- train.df[c(2,6)]
+# y_train_file <- write.csv(y_train, 'y_train.csv')
+# 
+# 
+# x_test <- test.df[c(2,1,3,4)]
+# x_test_file <- write.csv(x_test, 'x_test.csv')
+# y_test <- test.df[c(2,6)]
+# y_train_file <- write.csv(y_test, 'y_test.csv')
+# 
+# train_data <- do.call(rbind, lapply(list.gses.train, function(x) (getGEOData(x))))
+# test_data <- do.call(rbind, lapply(list.gses.test, function(x) (getGEOData(x))))
+
+```
+
+Function: Helps determine which clusters samples belong to
+Input: cluster centers, Output: ID of the female cluster
+```{r}
+# x is the cluster center (x = cl25935$centers in this case)
+whichClusters <- function(x) {
+  if (x[1] > x[2]) {
+    return (c("female", "male"))
+  }
+  else {
+    return (c("male", "female"))
+  }
+}
+
+cluster.labels <- whichClusters(cl25935$centers)
+combined_df$predicted_sex <- cluster.labels[combined_df$cluster]
+```

@@ -1,0 +1,39 @@
+
+# Goal: To sex label non cell-line GPL570 studies and compare amongst ALE, massiR, and Toker.
+
+```{r}
+isViable <- function(geo_id) {
+  if (overlap_file_studies$geo_id %in% viableStudies$Var1) {
+    overlap_file_studies$moreThanSix <- TRUE
+  }
+  else {
+    print("pineapple")
+    overlap_file_studies$moreThanSix <- FALSE
+  }
+}
+```
+
+```{r}
+### Download sample-level file
+require('tidyverse')
+overlap_file <- read.csv("/Users/anniechang/Desktop/Research/project/CREEDS_ALE_overlap.csv")
+
+### Filter for non-cell line GPL570 samples
+overlap_file_studies <- filter(overlap_file, (is.na(cell_line) | cell_line == FALSE) & (platform.new == 'GPL570'))
+
+overlap_file_studies$geo_id <- as.character(overlap_file_studies$geo_id) # must change this class
+tab <- as.data.frame(table(overlap_file_studies$geo_id)) # gets the number of samples associated with each study
+viableStudies <- filter(tab, Freq >= 6) # gets studies with 6 or more samples
+
+#### add a column indicating whether the study has more than 6 samples (T) or not (F)
+#sapply(overlap_file_studies$geo_id, test) # a test function lol
+overlap_file_studies$moreThanSix <- sapply(overlap_file_studies, isViable)
+
+## Automate the sex labeling to run study by study
+sapply(unique(overlap_file_studies$geo_id), getSexLabelsFinal)
+
+### Add a column with sex labels using massiR
+
+
+### Add another column with sex labels using Toker method
+```

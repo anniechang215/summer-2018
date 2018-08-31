@@ -1,0 +1,220 @@
+Sex Labeling Tutorial 7/17/18
+
+```{r}
+#require('tidyverse')
+#require('MetaIntegrator')
+gse21477 <- getGEOData("GSE21477")
+expData <- gse21477$originalData$GSE21477$expr # expression data
+keys.vec <- gse21477$originalData$GSE21477$keys # mapping of genes to probe IDs
+keys.vec <- as.data.frame(keys.vec)
+names(keys.vec) <- c("gene")
+keys.vec$probe <- rownames(keys.vec) # adds a column with the probe names to keys.vec
+
+# creates list of genes and probes for X and Y chromosomes
+rps4y1.probe <- filter(keys.vec, gene == 'RPS4Y1')
+xist.probe <- filter(keys.vec, gene == 'XIST') # contains xist genes and their corresponding probes
+
+# gets a list of expression level in each probe for X and Y chromosomes
+rps4y1.vals <- expData[rps4y1.probe$probe, ]
+xist.vals <- expData[xist.probe$probe, ]
+
+# gets the average of all expression data for a given sample
+if (length(xist.probe[[1]]) > 1){ xist.vals <- colMeans(xist.vals, na.rm=TRUE) }
+if (length(rps4y1.probe[[1]]) > 1) { rps4y1.vals <- colMeans(rps4y1.vals, na.rm=TRUE)}
+
+plot(xist.vals, rps4y1.vals, ylab="RPS4Y1", xlab="XIST")
+```
+
+```{r}
+### Code for clustering
+ssProbes.df <- t(expData[c(xist.probe$probe, rps4y1.probe$probe),]) # extract the rows with the probes
+
+# cluster with kmeans
+cl <- kmeans(ssProbes.df, 2)
+# cl$cluster labels each sample 
+cl$cluster # cluster 1: males, cluster 2: females
+# color by cluster in the plot
+plot(xist.vals, rps4y1.vals, ylab="RPS4Y1", xlab="XIST", col = c("blue", "red")[as.factor(cl$cluster)]) 
+```
+
+Sex Labeling Manual Annotation 7/18/18 (GSE25935)
+# add KDM5D (y chromosome) probes in addition to RPS4Y1 for clustering
+  # in other words, clusters probes using XIST and RPS4Y1 & KDM5D
+```{r}
+require('tidyverse')
+require('MetaIntegrator')
+gse16837 <- getGEOData("GSE16837")
+pData16837 <- gse16837$originalData$GSE16837$pheno
+expData16837 <- gse16837$originalData$GSE16837$expr # expression data
+keys.vec16837 <- gse16837$originalData$GSE16837$keys # mapping of genes to probe IDs
+keys.vec16837 <- as.data.frame(keys.vec16837)
+names(keys.vec16837) <- c("gene")
+keys.vec16837$probe <- rownames(keys.vec16837) # adds a column with the probe names to keys.vec
+
+# creates list of genes and probes for X and Y chromosomes
+rps4y1.probe16837 <- filter(keys.vec16837, gene == 'RPS4Y1')
+xist.probe16837 <- filter(keys.vec16837, gene == 'XIST') # contains xist genes and their corresponding probes
+
+# add kdm5d gene
+kdm5d.probe16837 <- filter(keys.vec16837, gene == 'KDM5D')
+
+# gets a list of expression level in each probe for X and Y chromosomes
+rps4y1.vals16837 <- expData16837[rps4y1.probe16837$probe, ]
+xist.vals16837 <- expData16837[xist.probe16837$probe, ]
+
+kdm5d.vals16837 <- expData16837[kdm5d.probe16837$probe, ]
+
+# gets the average of all expression data for a given sample
+if (length(xist.probe16837[[1]]) > 1){ xist.vals16837 <- colMeans(xist.vals16837, na.rm=TRUE)}
+if (length(rps4y1.probe16837[[1]]) > 1) { rps4y1.vals16837 <- colMeans(rps4y1.vals16837, na.rm=TRUE)}
+if (length(kdm5d.probe16837[[1]]) > 1) { kdm5d.vals16837 <- colMeans(kdm5d.vals16837, na.rm=TRUE)}
+
+plot(xist.vals16837, rps4y1.vals16837, main = "GSE16837", ylab="RPS4Y1", xlab="XIST")
+```
+
+```{r}
+### Code for clustering
+# ssProbes.df16837 <- t(expData16837[c(xist.probe16837$probe, rps4y1.probe16837$probe),]) # extract the rows with the probes
+ssProbes.df16837 <- t(expData16837[c(xist.probe16837$probe, rps4y1.probe16837$probe, kdm5d.probe16837$probe),])
+ 
+xist.vals16837 <- as.data.frame(xist.vals16837)
+rps4y1.vals16837 <- as.data.frame(rps4y1.vals16837)
+kdm5d.vals16837 <- as.data.frame(kdm5d.vals16837)
+
+# cluster with kmeans
+ssProbes.df16837 <- as.data.frame(ssProbes.df16837) # convert matrix to data frame
+#names(ssProbes.df16837) <- c("XIST", "RPS4Y1", "KDM5D") # rename columns of XIST and RPS4Y1 combined data
+
+# remove all probes with NA gene expression in either XIST or RPS4Y1
+ssProbes.df16837noNA <- ssProbes.df16837[complete.cases(ssProbes.df16837),]
+ssProbes.df16837noNA <- as.data.frame(ssProbes.df16837noNA)
+# saves probes that have NA gene expression (just in case)
+ssProbes.df16837NAcases <- ssProbes.df16837[!complete.cases(ssProbes.df16837),]
+
+# time to cluster!
+cl16837 <- kmeans(ssProbes.df16837noNA, 2)
+
+# add another column with the sample IDs
+ssProbes.df16837noNA$sampIDs <- rownames(ssProbes.df16837noNA)
+
+# contains an integer list of clusters! the important info
+cl16837$cluster # cluster 1: males, cluster 2: females
+
+# rename the cluster column (currently just 'y')
+names(ssProbes.df16837noNA)[ncol(ssProbes.df16837noNA)+1] <- "cluster"
+
+# two tables (intermediate step)
+table1 <- ssProbes.df16837noNA
+table2 <- as.data.frame(cl16837$cluster)
+names(table1)[ncol(table1)] <- "samp_ids"
+table2$samp_ids <- rownames(table2)
+
+# add another column with the cluster number
+# using full_join
+combined_df16837 <- full_join(table1, table2, by = "samp_ids")
+names(combined_df16837)[ncol(combined_df16837)] <- "cluster" # rename a column
+
+# using cbind
+ssProbes.df25935noNA <- cbind(ssProbes.df25935noNA, cl25935$cluster)
+
+cl16837$centers
+# color by cluster in the plot
+#plot(test$XIST, test$RPS4Y1, xlab = "XIST", ylab = "RPS4Y1", pch = test$`cl25935$cluster`, col= c("red", "blue"), clvecd = c(1,2))
+
+plot(combined_df16837$XIST, combined_df16837$RPS4Y1, xlab = "XIST", ylab = "RPS4Y1", col = c("red", "blue")[as.factor(combined_df16837$cluster)])
+
+#plot(ssProbes.df25935noNA$XIST, ssProbes.df25935noNA$RPS4Y1, xlab = "XIST", ylab = "RPS4Y1", col = c("red", "blue")[as.factor(ssProbes.df25935noNA$`cl25935$cluster`)])
+
+#plot(xist.vals25935, rps4y1.vals25935, ylab="RPS4Y1", xlab="XIST", col= c("blue", "red")[as.factor(cl25935$cluster)]) 
+```
+
+### STEP 0: Assign clusters 1 and 2 to male and female
+Function: Helps determine which clusters samples belong to
+Input: cluster centers, Output: ID of the female cluster
+```{r}
+# x is the cluster center (x = cl25935$centers in this case)
+whichClusters <- function(x) {
+  if (x[1] > x[2]) {
+    return (c("female", "male"))
+  }
+  else {
+    return (c("male", "female"))
+  }
+}
+
+cluster.labels <- whichClusters(cl25935$centers)
+combined_df$predicted_sex <- cluster.labels[combined_df$cluster]
+```
+
+### STEP 1: A function that accepts GSE ID and returns sex labels for all samples in that study
+This function automates the sex-labeling of a study
+# Input: Study IDs
+# Output: Sex Labels
+```{r}
+require('tidyverse')
+require('MetaIntegrator')
+```
+```{r}
+gse = getGEOData('GSE16837')
+
+getSexLabelsNew <- function(x) {
+  # <- getGEOData(x)
+  pData <- gse$originalData[[1]]$pheno
+  expData <- gse$originalData[[1]]$expr # expression data
+  keys.vec <- gse$originalData[[1]]$keys # mapping of genes to probe IDs
+  keys.vec <- as.data.frame(keys.vec)
+  names(keys.vec) <- c("gene")
+  keys.vec$probe <- rownames(keys.vec) # adds a column with the probe names to keys.vec
+  
+  rps4y1.probe <- filter(keys.vec, gene == 'RPS4Y1')
+  xist.probe <- filter(keys.vec, gene == 'XIST') # contains xist genes and their corresponding probes
+  
+  # gets a list of expression level in each probe for X and Y chromosomes
+  rps4y1.vals <- expData[rps4y1.probe$probe, ]
+  xist.vals <- expData[xist.probe$probe, ]
+  
+  # gets the average of all expression data for a given sample
+  if (length(xist.probe[[1]]) > 1){ xist.vals <- colMeans(xist.vals, na.rm=TRUE)}
+  if (length(rps4y1.probe[[1]]) > 1) { rps4y1.vals <- colMeans(rps4y1.vals, na.rm=TRUE)}
+  
+  # plot(xist.vals, rps4y1.vals, main = "GSE25935", ylab="RPS4Y1", xlab="XIST")
+  # clustering
+  
+  ## ssProbes.df <- t(expData[c(xist.probe$probe, rps4y1.probe$probe),]) # extract the rows with the probes
+  
+  # remove samples with NA gene expression 
+  xist.vals <- as.data.frame(xist.vals)
+  rps4y1.vals <- as.data.frame(rps4y1.vals)
+  
+  xist.vals$samp_ids <- rownames(xist.vals)
+  rps4y1.vals$samp_ids <- rownames(rps4y1.vals)
+  
+  ssProbes.df <- full_join(xist.vals, rps4y1.vals, by = "samp_ids")
+  
+  ssProbes.df <- ssProbes.df[complete.cases(ssProbes.df),]
+  ssProbes.df <- ssProbes.df[, c("xist.vals", "rps4y1.vals", "samp_ids")]
+  
+  #cluster
+  clustering.df <- t(expData[c(xist.probe$probe, rps4y1.probe$probe),])
+  cl <- kmeans(clustering.df, 2)
+  cluster.labels <- whichClusters(cl$centers)
+  
+  clusters.df <- (as.data.frame(cl$cluster))
+  names(clusters.df)[1] <- "cluster"
+  clusters.df$samp_ids <- rownames(clusters.df)
+  
+  combined.df <- as.data.frame(full_join(ssProbes.df, clusters.df, by = "samp_ids"))
+  combined.df$pred_sex <- cluster.labels[combined.df$cluster]
+  
+  return(combined.df)
+}
+combined.df <- getSexLabelsNew('GSE16837')
+```
+
+
+### STEP 2: Compare with study labels in phenotypic data
+```{r}
+# Checks how many sex labels match and how many do not
+```
+
+

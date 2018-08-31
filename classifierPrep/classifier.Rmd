@@ -1,0 +1,78 @@
+```{r}
+#load("toy_train_test.rdata")
+load("best_training.rdata")
+train_labels <- read.delim("toy_train_labels.txt") # training sex labels
+test_labels <- read.delim("toy_test_labels.txt") # testing sex labels
+
+require('MetaIntegrator')
+require('tidyverse')
+gse <- getGEOData("GSE16837")
+
+gses1 <- getGEOData(train_best$gse[1:6])
+toy_train_expr <- data.frame(sapply(gses1$originalData, function(x) x$expr))
+gses2 <- getGEOData(train_best$gse[7:12])
+toy_test_expr <- sapply(gses2$originalData, function(x) x$expr)
+
+#toy6 <- toy_train_expr[[6]]
+
+#probe_sample_data <- getKeyProbes(toy6)
+
+probe_sample_data <- do.call(rbind, lapply(toy_train_expr, getKeyProbes)) # gets all of the probe data from all of the toy examples
+probe_sample_data$gsm <- rownames(probe_sample_data) # adds the GSE ID to the probe data
+#unlist(lapply( strsplit(z[[1]],split="\\.."), "[", 1))
+#probe_sample_data$gsm <- unlist(lapply(strsplit(probe_sample_data$gsm, split = "."))[[1]])
+probe_sample_data$gsm <- sapply(probe_sample_data$gsm, function(x) { strsplit(x, split = '\\.')[[2]] } )
+
+combined_df_ale_train <- as.data.frame(full_join(probe_sample_data, train_labels, by = "gsm")) # combines the probe and sex label training data
+combined_df_ale_test <- as.data.frame(full_join(probe_sample_data, test_labels, by = "gsm")) # combines the probe and sex label testing data
+#row.names(combined_df) <- strsplit(as.character(row), sep = ".")[[1]]
+# have to figure out a way to rename rows ???
+
+# get sex labels via Toker method
+
+
+combined_df_toker_train <- as.data.frame(full_join(probe_sample_data, train_labels, by = "gsm")) # combines the probe and sex label training data
+combined_df_toker_test <- as.data.frame(full_join(probe_sample_data, test_labels, by = "gsm")) # combines the probe and sex label testing data
+```
+
+```{r}
+write.csv(train_exp_combined, 'train_exp_combined.csv')
+
+# toy example
+getKeyProbes <- function(expMat) {
+  probeList <- read.csv('probeList.csv')
+  # extract x- and y- chromosome data
+  probeData <- expMat[probeList$x,]
+  return(data.frame(t(probeData)))
+}
+```
+
+## step 1: get a data frame mapping samples with probes (make a function)
+
+### input: study
+### output: y-chromosome and XIST probes vs. samples
+```{r}
+require('tidyverse')
+require('MetaIntegrator')
+
+gse <- getGEOData("GSE16837")
+expData <- as.list(gse$originalData[[1]]$expr) # expression data
+keys.vec <- as.data.frame(gse$originalData[[1]]$keys) # keys data frame
+names(keys.vec) <- c("gene")
+keys.vec$gene <- as.character(keys.vec$gene)
+# keys.vec <- separate_rows(keys.vec$gene, ",")
+keys.vec$probe <- rownames(keys.vec)
+
+# XIST probes
+xist.probe <- as.data.frame(filter(keys.vec, gene == 'XIST')) # contains xist genes and their corresponding probes
+
+# y-chromosome probes
+ychr.genes <- read.csv("ychr.genes.csv", header = TRUE) # y-chromosome genes
+ychr.probe <- filter(keys.vec, gene %in% ychr.genes$hgnc_symbol) # probes that are from y-chromosome genes
+
+# extracts expression data that contains only probes of interest
+expData[c(xist.probe, ychr.probe),]
+```
+
+
+## step 2: get sex labels (add a column to the data)

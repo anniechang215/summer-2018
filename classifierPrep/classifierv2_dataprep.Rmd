@@ -1,0 +1,96 @@
+# using the Toker studies, we prep the classifier with training and testing datasets
+```{r}
+require('MetaIntegrator')
+require('tidyverse')
+gse <- getGEOData("GSE22138")
+```
+
+### GETS X.TRAIN - GSE10327, GSE14333, GSE14901, GSE27916
+### GETS X.TEST - GSE15434, GSE1643, GSE16581, GSE22138
+```{r}
+# gets gene expression levels for XIST, RPS4Y1, and KDM5D probes and corresponding sample IDs
+expData <- gse$originalData[[1]]$expr
+keys <- gse$originalData[[1]]$keys
+keys <- as.data.frame(keys)
+keys$probe <- rownames(keys)
+xist.probes <- filter(keys, keys == 'XIST')
+rps4y1.probes <- filter(keys, keys == 'RPS4Y1')
+kdm5d.probes <- filter(keys, keys == 'KDM5D')
+x.test2 <- expData[c(xist.probes$probe, rps4y1.probes$probe, kdm5d.probes$probe),]
+x.test2 <- as.data.frame(t(x.test2))
+x.test2$samp_ids <- rownames(x.test2)
+
+x.test <- rbind(x.test, x.test2)
+write.csv(x.test, '/Users/anniechang/Desktop/Research/x.test.updated.csv') # 800 samples
+x.train.updated <- read.csv('/Users/anniechang/Desktop/Research/x.train.updated.csv')
+# remove the extra column
+x.train.updated <- x.train.updated[,2:ncol(x.train.updated)]
+
+# remove the extra "X"s in the column names
+colnames(x.train.updated) <- sapply(colnames(x.train.updated), function(x) { substr(x, 2, nchar(x)) } )
+colnames(x.train.updated)[10] <- "samp_ids"
+```
+
+
+### GETS Y.TRAIN (sex labels for these samples)
+### GETS Y.TEST (sex labels for these samples)
+```{r}
+# gets sex labels for all samples in a study
+x.gene.vals <- expData[xist.probes$probe,]
+x.gene.vals <- as.data.frame(t(x.gene.vals))
+if (ncol(x.gene.vals) > 1) {
+  x.gene.vals <- as.data.frame(rowMeans(x.gene.vals, na.rm=TRUE))
+  names(x.gene.vals) <- c("x.gene.mean")
+}
+x.gene.vals$samp_ids <- rownames(x.gene.vals)
+
+y.gene.vals <- expData[c(rps4y1.probes$probe, kdm5d.probes$probe),]
+y.gene.vals <- as.data.frame(t(y.gene.vals))
+if (ncol(y.gene.vals) > 1) {
+  y.gene.vals <- as.data.frame(rowMeans(y.gene.vals, na.rm=TRUE))
+  names(y.gene.vals) <- c("y.gene.mean")
+}
+y.gene.vals$samp_ids <- rownames(y.gene.vals)
+
+combined_data <- as.data.frame(full_join(x.gene.vals, y.gene.vals, by = "samp_ids"))
+rownames(combined_data) <- combined_data$samp_ids
+
+clustering_data <- combined_data[, c(1,3)]
+clustering_data <- na.omit(clustering_data)
+
+cl <- kmeans(clustering_data, 2)
+cluster_labels <- whichClusters(cl$centers)
+
+clusters_df <- (as.data.frame(cl$cluster))
+names(clusters_df)[1] <- "cluster"
+clusters_df$samp_ids <- rownames(clusters_df)
+
+#combined.df <- as.data.frame(full_join(ssProbes.df, clusters.df, by = "samp_ids"))
+clustering_data$pred_sex <- cluster_labels[clusters_df$cluster]
+clustering_data$samp_ids <- rownames(clustering_data)
+clustering_data <- clustering_data[,c(3,4)]
+
+y.test2 <- clustering_data
+
+y.test <- rbind(y.test, y.test2)
+
+write.csv(y.test, '/Users/anniechang/Desktop/Research/y.test.updated.csv') # 800/423 samples again. perf
+y.test.updated <- read.csv('/Users/anniechang/Desktop/Research/y.test.updated.csv')
+# remove the extra column
+y.test.updated <- y.test.updated[,2:ncol(x.test.updated)]
+
+# remove the extra "X"s in the column names
+colnames(y.test.updated) <- sapply(colnames(y.test.updated), function(x) { substr(x, 2, nchar(x)) } )
+colnames(y.test.updated)[10] <- "samp_ids"
+```
+
+```{r}
+whichClusters <- function(x) {
+  if (x[1] > x[2]) {
+    return (c("female", "male"))
+  }
+  else {
+    return (c("male", "female"))
+  }
+}
+```

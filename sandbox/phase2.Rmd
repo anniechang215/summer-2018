@@ -1,0 +1,25 @@
+### prepping data for classifier
+
+### goal: sex label GPL570 studies in GEO
+
+```{r}
+require('tidyverse') # important!
+# downloads file with combined CREEDS and ALE data
+combined_data <- read.csv("CREEDS_ALE_overlap.csv")
+
+# filters for GPL570 studies that are not cell line (FALSE or NA)
+studies_data <- filter(combined_data, platform.new == 'GPL570' & (cell_line == FALSE | is.na(cell_line))) # 1451 studies
+
+# determines how many samples correspond to each study in GEO
+samples_per_study <- as.data.frame(table(studies_data$geo_id))
+
+studies_data_file <- write.csv(studies_data, 'studies_data_file.csv')
+
+# download the toy_ml_studies file so we can do a join with the sex labels generated from Toker
+toy_ml_studies <- read.csv("toy_ml_studies.csv")
+colnames(toy_ml_studies)[2] <- "samp_ids"
+
+# write this file out
+toy_ml_studies_predicted <- write.csv(toy_ml_studies, "toy_ml_studies_predicted.csv")
+
+```

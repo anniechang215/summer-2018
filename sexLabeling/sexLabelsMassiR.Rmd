@@ -1,0 +1,123 @@
+Test case: GSE16837
+```{r}
+# 1. Import data and begin analysis
+require('MetaIntegrator')
+require('massiR')
+#data(massi.test.dataset) # gene expression data
+#data(massi.test.probes) # y chromosome probe list
+
+# list of y chromosome genes
+ensembl.m <- useMart("ensembl") 
+ensembl <- useDataset("hsapiens_gene_ensembl", mart = ensembl.m)
+ychr.genes <- as.data.frame(getBM(attributes= "hgnc_symbol",
+                      filters=c("chromosome_name"),
+                      values=list("Y"), mart=ensembl))
+
+# saves the list of y chromosomes to a file
+write.csv(ychr.genes, file = "/Users/anniechang/Desktop/Research/drug_labeling/data/ychr.genes.csv")
+
+# my code
+gse <- getGEOData("gseGSE68849")
+expData <- as.data.frame(gse$originalData$GSE16837$expr)
+keys.vec <- as.data.frame(gse$originalData$GSE16837$keys)
+
+names(keys.vec) <- c("gene")
+
+# gets y chromosome genes in keys.vec
+ychr.pre.sample.genes <- as.data.frame(keys.vec[as.character(keys.vec$gene) %in% as.character(ychr.genes$hgnc_symbol),])
+names(ychr.pre.sample.genes) <- c("gene")
+
+ychr.sample.genes <- as.data.frame(intersect(ychr.pre.sample.genes$gene, keys.vec$gene))
+names(ychr.sample.genes) <- c("gene")
+ychr.sample.genes$gene <- as.character(ychr.sample.genes$gene)
+ychr.sample.genes <- filter(ychr.sample.genes, gene != 'KDM5D')
+ychr.sample.genes <- filter(ychr.sample.genes, gene != 'RPS4Y1')
+
+# ychr.samples <- filter(ychr.sample.genes, gene == )
+# gets list of y probes corresponding to those genes
+ychr.probes <- as.data.frame(rownames(keys.vec)[keys.vec$gene %in% ychr.sample.genes$gene])
+names(ychr.probes) <- c("probe")
+
+#test <- filter(keys.vec, gene %in% ychr.probes$gene)
+# creates an empty dataframe with just y chromosome probes as row names
+probeData <- data.frame(row.names = unique(ychr.probes$probe))
+# separate rows
+```
+
+```{r}
+# 2. Extract y chromosome probe data
+massi.y.out <- massi_y(expData, probeData)
+massi_y_plot(massi.y.out) # probe variation plot
+# selects y chromosome probes in the upper 25% threshold
+massi.select.out <- massi_select(expData, probeData, threshold = 4)
+head(massi.select.out)[,1:5]
+```
+
+```{r}
+# 3. Predict sex of samples
+results <- massi_cluster(massi.select.out) # predicts sample sex
+sample.results <- data.frame(results[[2]]) # table with predicted sex of each sample
+head(sample.results)
+print(table(sample.results$sex))
+```
+
+```{r}
+# 4. Visualize the massiR data
+# generates a heat map, bar plot, and principal component plot
+massi_cluster_plot(massi.select.out, results)
+#write.csv(massiPlots, file = "/Users/anniechang/Desktop/Research/drug_labeling/data/massiPlots.csv")
+```
+
+```{r}
+# 5. Check for potential sex bias using the dip test
+# tests if the data set has a male/female ratio that affects performance
+dip.result <- massi_dip(massi.select.out)
+# plot(dip.result[[3]])
+# hist(x=dip.result[[2]], breaks=20)
+```
+
+```{r}
+# 6. Perform massiR analysis with an ExpressionSet object
+# loads ExpressionSet data with massiR package
+data(massi.eset, massi.test.probes)
+eset.select.out <- massi_select(massi.eset, massi.test.probes)
+eset.results <- massi_cluster(eset.select.out)
+# add the results to the ExpressionSet
+
+# my code
+data(massi.eset, probeData)
+eset.select.out <- massi_select(massi.eset, probeData)
+eset.results <- massi_cluster(eset.select.out)
+```
+
+```{r}
+# 7. Use the included massiR Y chromosome probes
+# loads the massiR included probe lists
+data(y.probes)
+names(y.probes)
+illumina.v2.probes <- data.frame(y.probes["illumina_humanwg_6_v2"])
+```
+
+```{r}
+# 8. Use biomaRt to obtain y chromosome probe lists
+# Ensembl has mapped probe sequences to refeence genomes, allowing ambiguous and non-specific probes to be removed
+require('biomaRt')
+mart <- useMart('ensembl', dataset = 'hsapiens_gene_ensembl')
+filters <- listFilters(mart)
+attributes <- listAttributes(mart)
+
+gene.attributes <- getBM(mart=mart, values=TRUE, filters=c("with_illumina_humanwg_6_v2"), attributes= c("illumina_humanwg_6_v2", "entrezgene", "chromosome_name", "start_position", "end_position", "strand"))
+
+# removes probes mapped to multiple genomic regions
+unique.probe <- subset(gene.attributes, subset = !duplicated(gene.attributes[,1]))
+y.unique <- subset(unique.probe, subsest = unique.probe$chromosome_name == "Y")
+illumina.v2.probes <- data.frame(row.names = y.unique$illumina_humanwg_6_v2)
+```
+
+
+
+
+
+
+
+

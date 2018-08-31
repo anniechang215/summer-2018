@@ -1,0 +1,107 @@
+# This file contains the code for the manual annotation of the studies I am looking at
+
+```{r}
+# Download necessary packages
+require('MetaIntegrator')
+require('tidyverse')
+```
+
+```{r}
+# Gets a data frame of single drug perturbations from automated labeling
+drug_pert_auto <- read.csv("data/single_drug_perturbations-p1.0.csv", stringsAsFactors = FALSE)
+
+# Extracts data that is human
+  # We are using str_detect to also extract data that is [human, other organism]
+drug_pert_auto_human <- filter(drug_pert_auto, str_detect(organism, "human"))
+nrow(drug_pert_auto_human) # always good to check how many rows
+```
+
+```{r}
+# Gets list of unique studies
+list_geo_studies <- unique(drug_pert_auto_human$geo_id)
+length(list_geo_studies) # 225 unique GEO studies
+
+# Sets a random seed to get the same random list every time
+set.seed(711)
+```
+
+```{r}
+# Randomly samples 30 studies in the data
+rand_studies <- sample(list_geo_studies, 30, replace = FALSE)
+```
+
+```{r}
+# Write the randomly selected 30 studies into a file so we have it for reference
+write.table(data.frame(rand_studies), file = "data/rand_studies_30.txt", sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
+```
+
+# Now we will examine individual GEO studies.
+```{r}
+# Download the study and look at the phenotypic data.
+study_id <- "GSE70784" # acetominophen (example)
+gse <- getGEOData(study_id)
+pData <- gse$originalData$GSE70784$pheno
+View(pData)
+```
+
+```{r}
+# Select appropriate columns for each study for: drug, tissue, sex, organism, disease, other
+
+extracted_data <- pData[,c("geo_accession", "treatment:ch2", "tissue:ch2", "gender:ch2")]
+
+# Rename columns to proper names based on the mapping you created
+extracted_data <- rename(extracted_data, sample="geo_accession", drug="treatment:ch2", tissue="tissue:ch2", sex="gender:ch2")
+```
+
+```{r}
+# Provides a summary of the extracted phenotypic data in GEO
+summary(apply(extracted_data, 2, as.factor))
+```
+
+```{r}
+# Renames some of the labels for standardization
+extracted_data$sex <- recode(extracted_data$sex, "Male" = "male", "Female" = "female")
+extracted_data$drug <- recode(extracted_data$drug, "Placebo" = "control")
+```
+
+```{r}
+# Sets columns that will be the same across the entire study
+extracted_data$study <- study_id
+extracted_data$organism <- "human"
+extracted_data$disease <- "normal"
+extracted_data$other <- NA
+```
+
+```{r}
+# Reordering and writing out the data frame
+col_order <- c("study", "sample", "drug", "tissue", "sex" , "disease", "organism", "other" )
+extracted_data_reordered <- extracted_data3[ , col_order]
+
+# what does sprintf do? Try it - does this make sense
+write.table(extracted_data_reordered, sprintf("data/%s_extracted.txt", study_id))
+```
+
+GSE28006
+```{r}
+# Download the study and look at the phenotypic data
+study_id_gse28006 <- "GSE28006"
+gse28006 <- getGEOData(study_id_gse28006)
+pData28006 <- gse28006$originalData$GSE28006$pheno
+View(pData28006)
+```
+
+```{r}
+# Select the appropriate columns (drug, tissue, sex, disease)
+# drug: characteristics_ch1.3
+# tissue: cell line:ch1
+# sex: NA
+# disease: era status:ch1
+summary(apply(extracted_data28006, 2, as.factor))
+```
+
+GSE5537
+# tissue: tissue:ch1
+# drug: inhibitor:ch1
+# sex: NA
+# disease: characteristics_ch1.1
+

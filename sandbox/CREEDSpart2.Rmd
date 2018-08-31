@@ -1,0 +1,126 @@
+PART TWO - CREEDS Drug Data
+Goal: Add a column 'drugbank-id' to the automated CREEDS drug data.
+
+1. Reformatting the DrugBank data
+```{r}
+# Read in drugbank data
+drugbank <- read.csv("data/drugbank_vocabulary.csv")
+# Create new data frame "drug_mapping" with subset of columns: Common.name, Synonyms, DrugBank ID
+drug_mapping <- drugbank %>% select(Common.name, Synonyms, DrugBank.ID)
+# Use separate_rows() to separate out the synonyms
+drug_mapping <- separate_rows(drug_mapping, Synonyms, sep = "\\|")
+```
+# Need a way to remove all drugs with synonyms that are invalid UTFs !!
+
+2. Reformatting the CREEDS data
+```{r}
+# Read in CREEDS data
+# Genes: Manual and Auto
+gene_pert_manual <- read.csv("data/single_gene_perturbations-v1.0.csv", stringsAsFactors = FALSE)
+gene_pert_auto <- read.csv("data/single_gene_perturbations-p1.0.csv", stringsAsFactors = FALSE)
+
+# Drugs: Manual and Auto
+drug_pert_manual <- read.csv("data/single_drug_perturbations-v1.0.csv", stringsAsFactors = FALSE)
+drug_pert_auto <- read.csv("data/single_drug_perturbations-p1.0.csv", stringsAsFactors = FALSE)
+
+# Diseases: Manual and Auto
+disease_pert_manual <- read.csv("data/disease_signatures-v1.0.csv", stringsAsFactors = FALSE)
+disease_pert_auto <- read.csv("data/disease_signatures-p1.0.csv", stringsAsFactors = FALSE)
+
+# Use separate_rows() on the CREEDS data to separate out multiple drug names.
+  # I believe we are supposed to separate out both control IDs and pert IDs. (??)
+gene_pert_auto_copy <- gene_pert_auto
+gene_pert_auto_copy <- separate_rows(gene_pert_auto_copy, ctrl_ids, sep = "\\|")
+gene_pert_auto_copy <- separate_rows(gene_pert_auto_copy, pert_ids, sep = "\\|")
+```
+
+3. Putting the data together
+We combine CREEDS data with DrugBank data.
+  Goal: To see which drugs in CREEDS data are in DrugBank data.
+# Why do we want to use a left join vs a different join?
+We use a left join to keep all of the observations in the CREEDS data
+# What should we put in the "by" field? (drug_name or drugbank_id? why?)
+drugbank_id
+# What does the result look like?
+It's just another data frame (CREEDSinDrugBank)
+```{r}
+# We do a left join() where x is CREEDS data and y is "drug_mapping"
+CREEDSinDrugBank <- left_join(drug_pert_auto_copy, drugNames, by = 'drug_name')
+```
+
+4. Look at drug instance mapping to DrugBank
+# Which drug instances do not map to DrugBank?
+These drug instances were found in CREEDS data but not in the DrugBank.
+In other words, these are novel drugs found by CREEDS.
+
+  1) Look for NAs in the drugbank_id field.
+```{r}
+NADrugBankIDs <- copyCREEDS %>% filter(is.na(DrugBank.ID))
+# I didn't use group_by() ; It seems useful but I couldn't get a way for it to select only the NAs in the drugbank_id field. (??)
+dim(NADrugBankIDs) # 83012 DrugBank IDs which are NAs
+```
+  
+  2) Make a list of the drug names for the drug instances without mapping.
+```{r}
+noIDdrugNames <- NADrugBankIDs$drug_name
+View(noIDdrugNames)
+```
+
+  3) Write this list out to a file.
+```{r}
+# Table with information about drug names with no mapping and their frequencies.
+noIDdrugNamesFreq <- table(noIDdrugNames)
+View(noIDdrugNamesFreq)
+# Write this list out to a file
+write.csv(noIDdrugNamesFreq, "data/noIDdrugNamesFreq.csv")
+```
+
+5. Identify studies
+We will do a thorough search for studies with >= 8 samples in the data.
+We need studies that have >= 4 males and >= 4 females to use in our meta-analysis.
+
+Once identified, we will sex-label these studies and check to see whether we can use them.
+# Count the number of control samples in each study (studies with >= 8 samples)
+    -> ("ctl_studies.txt")
+```{r}
+subset <- subset[!duplicated(subset),]
+tab <- table(subset$geo_id)
+val <- tab[tab >= 8]
+write.csv(val, "ctl_studies.txt")
+```
+# Count the number of perturbed samples in each study with a particular drug.
+    -> ("drug_studies.txt")
+```{r}
+
+write.csv(xxxxx, "drug_studies.txt")
+```
+
+6. Exploratory Analysis
+Think about how to organize/examine the data.
+
+How many controls are on average in a study? How many samples? (use npert, nctl for this).
+# mean(val$n) results in 16.08 controls on average in a study. 
+Which drugs are present?
+
+How many instances of each drug?
+
+Make a histogram of # drugs for each drug using geom_histogram from ggplot2
+# Should show # of drugs vs. name of drug
+```{r}
+# Get the table of drugs and their frequencies in descending order.
+new_data <- drugFreqs %>% arrange(desc(freq))
+# Get the 15 drugs with the highest counts.
+new_data <- new_data[1:15, ]
+```
+
+Look at all of this separated by organism
+
+
+What other questions do you have about the data?
+
+Make another histogram about some other aspect of the data.
+
+
+
+
+

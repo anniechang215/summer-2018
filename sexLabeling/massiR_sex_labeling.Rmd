@@ -1,0 +1,86 @@
+### Function that automatically sex labels studies using massiR
+
+# Input: A study
+# Output: Sex labels
+
+```{r}
+# download necessary packages
+require('MetaIntegrator')
+require('massiR')
+require('tidyverse')
+
+source("https://bioconductor.org/biocLite.R")
+biocLite("biomaRt")
+
+### y-chromosome genes
+#### option 1: download from ensembl
+ensembl.m <- useMart("ensembl") 
+ensembl <- useDataset("hsapiens_gene_ensembl", mart = ensembl.m)
+ychr.genes <- as.data.frame(getBM(attributes= "hgnc_symbol",
+                      filters=c("chromosome_name"),
+                      values=list("Y"), mart=ensembl))
+### option 2: use file saved onto local
+ychr.genes <- read.csv("ychr.genes.csv", header = TRUE)
+
+gse <- getGEOData("GSE16837")
+```
+
+``` {r}
+info1 <- getMassiRSexLabels(gse)
+View(info1) # massiR sex labels
+
+massiR_and_pred <- full_join(info1, info2, by = "samp_ids")
+GSE16837combined <- massiR_and_pred[, c(1, 5, 10)]
+write.csv(GSE16837combined, 'GSE16837combined.csv')
+
+View(GSE16837combined)
+
+getMassiRSexLabels <- function(x) {
+  # STEP 1: imports data and begins analysis
+  # assumption: gse is already downloaded from somewhere
+  expData <- na.omit(as.data.frame(gse$originalData[[1]]$expr))
+  keys.vec <- as.data.frame(gse$originalData[[1]]$keys)
+  names(keys.vec) <- c("gene")
+
+  # gets y chromosome genes in keys.vec
+  ychr.pre.sample.genes <- as.data.frame(keys.vec[as.character(keys.vec$gene) %in% as.character(ychr.genes$hgnc_symbol),])
+  names(ychr.pre.sample.genes) <- c("gene")
+  
+  ychr.sample.genes <- as.data.frame(intersect(ychr.pre.sample.genes$gene, keys.vec$gene))
+  names(ychr.sample.genes) <- c("gene")
+  ychr.sample.genes$gene <- as.character(ychr.sample.genes$gene)
+  
+  # removes both KDM5D and RPS4Y1 genes from the list of y-chromosome genes
+  ychr.sample.genes <- filter(ychr.sample.genes, gene != 'KDM5D')
+  ychr.sample.genes <- filter(ychr.sample.genes, gene != 'RPS4Y1')
+  #View(ychr.sample.genes)
+  
+  # gets list of y probes corresponding to those genes
+  ychr.probes <- as.data.frame(rownames(keys.vec)[keys.vec$gene %in% ychr.sample.genes$gene])
+  names(ychr.probes) <- c("probe")
+  
+  # creates an empty dataframe with just probes of y chromosomes as row names
+  probeData <- data.frame(row.names = unique(ychr.probes$probe))
+
+  #View(expData)
+  #View(probeData)
+  # STEP 2: extracts y-chromosome probe data
+  massi.y.out <- massi_y(expData, probeData)
+  #View(massi.y.out)
+  # massi_y_plot(massi.y.out) # probe variation plot
+  massi.select.out <- massi_select(expData, probeData, threshold = 4)
+  #View(massi.select.out)
+  
+  # STEP 3: predicts sex of samples
+  results <- massi_cluster(massi.select.out) # predicts sample sex
+  sample.results <- data.frame(results[[2]]) # table with predicted sex of each sample
+  names(sample.results)[ncol(sample.results)] <- "massiR_sex"
+  names(sample.results)[1] <- "samp_ids"
+  
+  # 5. Check for potential sex bias using the dip test
+  dip.result <- massi_dip(massi.select.out)
+  print(dip.result)
+  
+  return (sample.results)
+}
+```

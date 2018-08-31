@@ -1,0 +1,407 @@
+
+
+GOALS:
+* Get more familiar with R and with the resources available
+* Identify which studies (and then samples) have drugs in them
+
+
+Work through the R Tutorial:
+https://www.datacamp.com/courses/free-introduction-to-r 
+
+Packages to install
+* tidyverse
+* stringr
+
+
+Read in the DrugBank labels - downloaded from https://www.drugbank.ca/releases/latest#open-data
+```{r}
+<<<<<<< HEAD
+drugbank <- read.csv("data/drugbank_vocabulary.txt")
+=======
+drugbank <- read.csv("data/drugbank_vocabulary.csv")
+# look at the options for read.csv using ?read.csv
+>>>>>>> ad59fb883de6282efca8615c5bd0b35fb18db2b8
+```
+
+Read in the annotated data - this is the result of my meta-analysis annotations
+```{r}
+annot_data <- read.delim("data/annot_data_drug.tsv")
+# look at the options for read.delim using ?read.delim
+# why are we using read.delim here?
+```
+
+Change the common name type from factor to character
+```{r}
+drugbank$Common.name <- as.character(drugbank$Common.name)
+class(drugbank$Common.name) # to check the class of the Common.name column
+```
+
+From the annotated data, select the column "drug_exposure"
+```{r}
+annot_data[, "drug_exposure"]
+```
+
+Use the function table() to count the number of drug exposures
+```{r}
+table(annot_data[, "drug_exposure"])
+```
+FALSE: 985, TRUE: 79
+
+For the drugbank data, determine how many rows and columns are in the data
+```{r}
+ncol(drugbank) # 7
+nrow # 11033
+dim(drugbank) # 11033 7
+```
+
+Extract the title column from the annotated data, separate title into words
+Extract column and save as a list
+```{r}
+list.titles <- annot_data[, "Title"]
+```
+Check the class using class()
+
+If it is a factor, convert to character using as.character()
+```{r}
+list.titles <- as.character(list.titles)
+```
+
+Convert all of the titles to lowercase using str_to_lower() - remember to load stringr first!
+```{r}
+require(stringr)
+str_to_lower(list.titles)
+```
+
+Create a bag of words for each title
+  1. Separate one title into a bag of words
+  ```{r}
+  bag.words1 <- strsplit(list.titles[[1]], " ")
+  ```
+  2. Play around with the length function
+  ```{r}
+  length(bag.words1) # gets length of first element in bag (?)
+  length(bag.words[[1]]) # gets total number of elements in words1
+  str_length(bag.words1[[1]][[1]]) # gets length of first element in words1
+  ```
+  3. Separate all titles into words
+  ```{r}
+  all.bags.words <- sapply(list.titles, function(title){
+  str_split(title[[1]], " ")[[1]]
+  })        
+  ```
+  # ? - what is function() and how does this separate ALL titles in the data file
+
+Look at tylenol information
+  Look at Common.name, Synonym in drugbank
+  Check the class using class()
+  If it is a factor, convert to character using as.character()
+  
+  Extract the row that has "Acetominophen" as the common name
+  ```{r}
+  tylenol.row <- drugbank[drugbank$Common.name == "Acetaminophen"]
+  ```
+  Store the common name
+  ```{r}
+  tylenol.name <- tylenol.row[3]
+  ```
+  Store the drugbank ID
+  ```{r}
+  tylenol.drugbank.id <- tylenol.row[1]
+  ```
+  Split the synonyms column
+  ```{r}
+  tylenol.synonyms <- strsplit(tylenol.row[,"Synonyms"], " \\| ")[[1]]
+  ```
+  How many synonyms are there? Use length()
+  ```{r}
+  length(tylenol.synonyms) # 18
+  ```
+
+# first way - see if it is in any of the data frames
+```{r}
+tylenol_exists <- str_detect(list_titles, tylenol.str.lower)
+table(tylenol_exists) 
+```
+
+<<<<<<< HEAD
+# How many results do we find? 
+  # got FALSE: 1055, TRUE: 9 (TRUE means the study title contains a variation of tylenol)
+
+# Look at the results - which of these are the common name? a synonym?
+  # Add a column to the annotated data with whether or not tylenol was used in the study
+  ```{r}
+  tylenol_exists <- str_detect(list_titles, tylenol.str)
+  new_data <- cbind(annot_data, tylenol_exists)
+  ```
+  # Check which studies used tylenol
+  ```{r}
+  new_data[tylenol_exists, ]
+  ```
+
+# Which would we have missed if it was case sensitive?
+  # We would have missed:
+    312: Low dose human APAP exposure
+    720: Blood Gene Expression Profiling of an Early Acetaminophen Response (I
+    721: Blood Gene Expression Profiling of an Early Acetaminophen Response (II)
+    793: Transcription profiling of human HepG2 cell line  response to challenge by a specific     pharmaceutically active compound (Acetaminophen)LGC_ACAP__DD4_Tox
+    
+  
+# Add a column to the drugbank data frame with the title "is.tylenol"
+
+  
+Start with the common name - search the title for this
+=======
+Descriptive analysis of the data
+```{r}
+# From the annotated data: select the column "drug_exposure" using df[,"col.name"]
+
+# Then use the function table() to count the number of drug exposures (FALSE, TRUE)
+# - How many drug exposures are there? 
+
+
+# For the drugbank data
+#  - how many rows are in the data?
+#  - how many columns are in the data?
+#  use ncol, nrow, and dim to do this
+
+
+```
+
+
+
+Extract the title column from the annotated data, separate titles into words
+Extract column using df[,"col.name"] -OR- df$col.name and save as a list
+```{r}
+list.titles <- # fill this in the with column
+
+# check the class using "class()"
+
+# if it is a factor, convert to character using "as.character()", double check the class
+# ex. list.titles <- as.character(list.titles)
+  
+# convert these all to lower case using str_to_lower()
+
+### create a bag of words for each title ###
+# (note - we don't use this for now, but it's worth doing just as an exercise)
+# separate one title into a bag of words:
+bag.words1 <- strsplit(list.titles[[1]], " ")
+# look at the output - how long is it? which part do we want?
+# play around with this
+bag.words1
+length(bag.words1)
+length(bag.words1[[1]]) # what is this?
+str_length(bag.words1[[1]][[1]])
+
+# run this command to separate all titles into words 
+# - sapply takes a function and applies it to every item in a list
+# - look this up, make sure you understand what it is doing
+# - why did 
+all.bags.words <- sapply(list.titles, function(title){
+  str_split(title[[1]], " ")[[1]]
+})
+```
+
+
+Look at tylenol information
+```{r}
+# Look at Common.name, Synonym in drugbank
+# check the class using "class()"
+
+# if it is a factor, convert to character using "as.character()", then double check the class
+# ex. drugbank$Common.name <- as.character(drugbank$Common.Name)
+
+# Extract the row that has "Acetaminophen" as the common name
+#  using df[df$Common.name=="<desired_drug>",] (where df is drugbank data frame, and you fill in desired drug)
+tylenol.row <- 
+  
+# what is the common.name? store this:
+tylenol.name <-
+
+# what is the drugbank ID? store this:
+tylenol.drugbank.id <- 
+
+# split the synonym column
+tylenol.synonyms <- strsplit(tylenol.row[,"Synonyms"], " \\| ")[[1]] 
+# compare this to the str_split command used above - how does this differ?
+# How many synonyms are there? use length()
+
+# put together the lists
+list.tylenol <- c(tylenol.name, tylenol.synonyms)
+
+# combine this into a regular expression - "|" is OR
+tylenol.str <- paste(list.tylenol, collapse="|")
+
+# convert all the drug names to lower case using "str_to_lower()"  
+
+```
+
+
+Look for tylenol in all the titles:
+```{r}
+
+# first way - see if it is in any of the data frames
+str_detect(list.titles, tylenol.str.lower)
+
+# How many results do we find? 
+
+# Look at the results - which of these are the common name? a synonym?
+# Which would we have missed if it was case sensitive?
+
+# Add a column to the annotated data frame with the title "is.tylenol"
+
+
+# make sure that we are using the lowercase lists! double check this
+```
+
+
+
+Select the column with Common.name from drugbank data 
+Save this as a list.
+
+For labeling all drugs, try writing a function in R that takes input of a single title and then selects the drug label.
+  you can either use str_detect -OR- I recommend trying intersect() and making the title into a bag of words too
+
+# This chunk of code gets all the drugs that correspond to which studies
+
+```{r}
+list.drugs <- drugbank$Common.name # make sure the elements are characters and it is lowercase
+list.drugs
+# Purpose of function: Finds the drug label from a single title
+idDrugInTitle <- function(title, list.drugs) {
+  # make title into a bag of words - like we did before
+  bagWordsTitle <- strsplit(title, " ")[[1]]
+  # look for the intersection with list.drugs
+  # use the function intersect()
+  drugsInStudy <- intersect(bagWordsTitle, list.drugs)
+  # return NA if no drugs present
+  if (length(drugsInStudy) == 0) {
+    return (NA)
+  }
+  # or a string of the drugs that intersect
+  else {
+    drugsAll <- paste(drugsInStudy, collapse = " | ")
+    return (drugsAll)
+  }
+}
+```
+
+Test this on a couple examples
+* try acetaminophen - do you get the same results?
+```{r}
+idDrugInTitle("Blood Gene Expression Profiling of an Early Acetaminophen Response (II)", list.drugs)
+```
+
+* pick another drug (e.g. doxorubicin) - inspect the results manually - do they make sense?
+```{r}
+```
+
+Then structure it like a for loop:
+* We will speed this up later, but just do it how you'd think it thru programmatically and we can always do that later
+
+# Purpose: Gets which drug is present in each study for ALL studies in annotated file
+  # Don't we need a data structure to store all of the titles and drugs?
+
+## Original code 
+#  for (title in list.titles){
+#    drug.label <- idDrugInTitle(title, list.drugs)
+#  }
+
+```{r}
+drugLabels <- sapply(list.titles, function(title) idDrugInTitle(title, list.drugs))
+```
+
+# Make sure everything is lowercase, a character, and incorporate synonyms
+# my.list <- c("DB10032") = c("drug1", "drug1syn", "drug1syn2")
+# interested in drugBankID, common name, and synonyms
+# list.drugs <- drugbank$Common.name
+# 
+# make a function that takes 
+
+# ```{r}
+#   drugLabel
+#   for (title in list.titles) {
+#     drugLabel <- cbind(drugLabel, idDrugInTitle(title, list.drugs))
+#   }
+# ```
+
+>>>>>>> ad59fb883de6282efca8615c5bd0b35fb18db2b8
+* How many drug exposures do we identify?
+* Create a column that lists which drugs are present
+
+```{r}
+
+```
+
+Search for the synonyms 
+* Note that you will have to parse the synonym column 
+* In the end, the label in the drug column should be the drug name, not the synonym
+* How many more does this get? Is it helpful?
+
+```{r}
+
+```
+
+Descriptive analysis of the results:
+* how many drugs? which drugs?
+* make a bar chart of frequencies of drugs present more than once
+https://www.statmethods.net/graphs/bar.html
+
+```{r}
+biocLite("preprocessCore")
+biocLite("multtest")
+biocLite("Biobase")
+biocLite("GEOquery")
+biocLite("GEOmetadb")
+```
+
+# ```{r}
+# for(i in 1:5){
+# print(i*2)
+# }
+# 
+# ```
+# ```{r}
+# bag.words1
+# ```
+# 
+# ```{r}
+# a <- 7
+# b <- 3
+# a/b
+# ```
+# 
+# ```{r}
+# a <- "bee"
+# b <- "keeper"
+# paste(a, b, sep="@")
+# ```
+
+# ```{r}
+# words <- c("ball", "stop", "mon", "dex")
+# for (i in 1:length(words)) {
+#   newWord = paste("poke", words[i], sep = "")
+#   print(newWord)
+# }
+# ```
+# 
+# ```{r}
+# hi = c(1, 2, 3)
+# range(hi)
+# ```
+
+# ```{r}
+# # Separates all titles in the drugbank file into a list of words
+# 
+# funsplit <- function(title) {
+#   str_split(list_titles[[1]], " ")
+# }
+# 
+# sapply(list_titles, funsplit(title))
+# ```
+
+
+
+
+
+
+

@@ -1,0 +1,142 @@
+Goal: Assess quality of our sex labels compared to machine-learning samples from ALE paper
+
+```{r}
+### 1. Read in ML sex labels
+ml.sex <- read.delim("data/gse16837_ml_labels.txt")
+```
+
+```{r}
+### 2. Run sex-labeling on data using sex-labeling function
+require('MetaIntegrator')
+require('tidyverse')
+gse <- getGEOData("gse16837")
+#print(ls(gse$originalData))
+sexLabels16837 <- getSexLabelsFinal(gse)
+```
+
+```{r}
+### 3. Join predicted sex-labels with ML sex labels
+# Rename data so that the sample ID column has the same name
+ml.sex <- rename(ml.sex, samp_ids = X)
+ml.sex <- rename(ml.sex, ml_sexLab = sex.label)
+sexLabels16837 <- rename(sexLabels16837, pred_sexLab = pred_sex)
+
+# Run join by sample ID to compare sex labels
+ml.sex$samp_ids <- as.character(ml.sex$samp_ids)
+combined.sexLabels <- full_join(sexLabels16837, ml.sex, by = "samp_ids")
+
+# Add sex labels from massiR to also compare sex labels
+combined.sexLabels$massiR_sexLab <- sample.results$sex
+combined.sexLabels <- combined.sexLabels[, c(9, 7, 10, 11, 5, 6, 1, 2, 3, 8, 4)]
+
+# Confusion matrices: MassiR vs. ALE, MassiR vs. Predicted
+table(combined.sexLabels[, c("massiR_sexLab", "ml_sexLab")])
+table(combined.sexLabels[, c("massiR_sexLab", "pred_sexLab")])
+```
+
+```{r}
+### 4. Analyze the data to answer the question: Do the sex labels match?
+table(combined.sexLabels[, c("pred_sexLab", "ml_sexLab")])
+diffLabels <- combined.sexLabels[!is.na(combined.sexLabels$ml_sexLab) & (combined.sexLabels$pred_sexLab != combined.sexLabels$ml_sexLab),]
+sameLabels <- combined.sexLabels[!is.na(combined.sexLabels$ml_sexLab) & (combined.sexLabels$pred_sexLab == combined.sexLabels$ml_sexLab),]
+
+table(diffLabels$high.conf)
+table(sameLabels$high.conf)
+```
+
+```{r}
+### 5. Plotting the sex labels
+# Plot the data using XIST as x-axis and RPS4Y1 as y-axis using ggplot
+# Color the points by the sex labels you used
+sexLabelsNoNA <- combined.sexLabels[!is.na(combined.sexLabels$ml_sexLab),]
+sexLabelColors <- as.factor(sexLabelsNoNA$cluster)
+sexLabelShapes <- as.factor(sexLabelsNoNA$ml_sexLab)
+
+# Add another column that contains the confidence level
+sexLabelsNoNA <- transform(sexLabelsNoNA, max = pmax(probF, probM))
+
+# get and save plain plot
+plainPlot <- ggplot(data = sexLabelsNoNA) + xlab('XIST') + ylab('RPS4Y1') + 
+  theme(legend.title = element_blank()) + 
+  ggtitle("ML vs Predicted Sex Labels") + 
+  scale_color_manual(labels = c("female", "male"), values = c("red", "blue")) + geom_point(mapping = aes(x = sexLabelsNoNA$xist.vals, y = sexLabelsNoNA$rps4y1.vals, color = c("red", "blue")[sexLabelColors], shape = sexLabelShapes))
+
+ggsave(filename = "ml_v_pred_plain.jpg", plot = plainPlot)
+
+# get and save plot with point transparency indicating confidence level
+transparentPlot <- ggplot(data = sexLabelsNoNA) + xlab('XIST') + ylab('RPS4Y1') + theme(legend.title = element_blank()) + ggtitle("ML vs Predicted Sex Labels") + scale_color_manual(labels = c("female", "male"), values = c("red", "blue")) + scale_size_continuous(range = c(1.0, 3.0)) + geom_point(mapping = aes(x = sexLabelsNoNA$xist.vals, y = sexLabelsNoNA$rps4y1.vals, color = c("red", "blue")[sexLabelColors], shape = sexLabelShapes, alpha = sexLabelsNoNA$max))
+
+ggsave(filename = "ml_v_pred_transp.jpg", plot = transparentPlot)
+
+# get and save plot with point size indicating confidence level
+sizePlot <- ggplot(data = sexLabelsNoNA) + xlab('XIST') + ylab('RPS4Y1') + theme(legend.title = element_blank()) + ggtitle("ML vs Predicted Sex Labels") + scale_color_manual(labels = c("female", "male"), values = c("red", "blue")) + scale_size_continuous(range = c(1.0, 3.0)) + geom_point(mapping = aes(x = sexLabelsNoNA$xist.vals, y = sexLabelsNoNA$rps4y1.vals, color = c("red", "blue")[sexLabelColors], shape = sexLabelShapes, size = sexLabelsNoNA$max))
+
+ggsave(filename = "ml_v_pred_size.jpg", plot = sizePlot)
+
+# Highlight samples on the plot that are low-confidence
+# Highlight samples on the plot that have different ML sex labels than the predicted sex labels
+```
+
+```{r}
+### 6. Look at the expression levels of other y chromosome probes (besides RPS4Y1) in samples that have different labels between predicted and machine learning
+# Select other y chromosome probes to look at: CDY9P, KDM5D, PRKY
+# Find samples that are differently classified: samples in diffLabels
+
+require('tidyverse')
+require('MetaIntegrator')
+gse16837 <- getGEOData("GSE16837")
+expData <- gse16837$originalData$GSE16837$expr # expression data
+keys.vec <- gse16837$originalData$GSE16837$keys # mapping of genes to probe IDs
+keys.vec <- as.data.frame(keys.vec)
+names(keys.vec) <- c("gene")
+keys.vec$probe <- rownames(keys.vec) # adds a column with the probe names to keys.vec
+
+### KDM5D
+# creates list of genes and probes for X and Y chromosomes
+# cdy9p.probe <- filter(keys.vec, gene == 'CDY9P')
+kdm5d.probe <- filter(keys.vec, gene == 'KDM5D') # contains xist genes and their corresponding probes
+
+# gets a list of expression level in each probe for X and Y chromosomes
+kdm5d.vals <- expData[kdm5d.probe$probe, ]
+kdm5d.vals <- as.data.frame(kdm5d.vals)
+kdm5d.vals$samp_ids <- rownames(kdm5d.vals)
+
+diffClassKDM5D <- inner_join(kdm5d.vals, diffLabels, by = "samp_ids")
+```
+
+```{r}
+### PRKY
+require('tidyverse')
+require('MetaIntegrator')
+gse16837 <- getGEOData("GSE16837")
+expData <- gse16837$originalData$GSE16837$expr # expression data
+keys.vec <- gse16837$originalData$GSE16837$keys # mapping of genes to probe IDs
+keys.vec <- as.data.frame(keys.vec)
+names(keys.vec) <- c("gene")
+keys.vec$probe <- rownames(keys.vec) # adds a column with the probe names to keys.vec
+# creates list of genes and probes for X and Y chromosomes
+# cdy9p.probe <- filter(keys.vec, gene == 'CDY9P')
+prky.probe <- filter(keys.vec, gene == 'PRKY') # contains xist genes and their corresponding probes
+
+# gets a list of expression level in each probe for X and Y chromosomes
+prky.vals <- expData[prky.probe$probe, ]
+prky.vals <- as.data.frame(prky.vals)
+prky.vals$samp_ids <- rownames(prky.vals)
+
+diffClassPRKY <- inner_join(prky.vals, diffLabels, by = "samp_ids")
+```
+
+```{r}
+### BPY2
+# creates list of genes and probes for X and Y chromosomes
+# cdy9p.probe <- filter(keys.vec, gene == 'CDY9P')
+bpy2.probe <- filter(keys.vec, gene == 'BPY2') # contains xist genes and their corresponding probes
+
+# gets a list of expression level in each probe for X and Y chromosomes
+bpy2.vals <- expData[bpy2.probe$probe, ]
+bpy2.vals <- as.data.frame(bpy2.vals)
+bpy2.vals$samp_ids <- rownames(bpy2.vals)
+
+diffClassBPY2 <- inner_join(bpy2.vals, diffLabels, by = "samp_ids")
+```
+
