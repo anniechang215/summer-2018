@@ -1,7 +1,9 @@
+Function for sex labeling studies according to Toker method
+
 ### A function that accepts GSE ID and returns sex labels for all samples in that study
 This function automates the sex-labeling of a study
-# Input: Study IDs
-# Output: Sex Labels
+#### Input: Study IDs
+#### Output: Sex Labels
 ```{r}
 require('tidyverse')
 require('MetaIntegrator')
@@ -157,26 +159,8 @@ getSexLabelsFinal <- function(gse) {
   View(combined.df)
   View(xist.vals)
   
-  #plot(combined.df$xist.vals, combined.df$rps4y1.vals, xlab = "XIST", ylab = "RPS4Y1", col = c("red", "blue")[as.factor(combined.df$cluster)])
-  
   return (combined.df)
 }
-# 
-# x_train <- train.df[c(2,1,3,4)]
-# x_train_file <- write.csv(x_train, 'x_train.csv')
-# 
-# y_train <- train.df[c(2,6)]
-# y_train_file <- write.csv(y_train, 'y_train.csv')
-# 
-# 
-# x_test <- test.df[c(2,1,3,4)]
-# x_test_file <- write.csv(x_test, 'x_test.csv')
-# y_test <- test.df[c(2,6)]
-# y_train_file <- write.csv(y_test, 'y_test.csv')
-# 
-# train_data <- do.call(rbind, lapply(list.gses.train, function(x) (getGEOData(x))))
-# test_data <- do.call(rbind, lapply(list.gses.test, function(x) (getGEOData(x))))
-
 ```
 
 Function: Helps determine which clusters samples belong to
