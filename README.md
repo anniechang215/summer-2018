@@ -7,8 +7,7 @@ Collection of R files A Chang worked on from June 25 - Aug 31, 2018
 - [plot_study.Rmd](plot_study.Rmd) - performs clustering based on individual studies
 - [toker_data_plots.Rmd](toker_data_plots.Rmd) - performs clustering for studies in training and testing datasets
 - [sandbox](sandbox) - folder for older files
-  - [test](https://github.com/anniechang215/summer-2018/blob/master/sandbox/CREEDSpart1.Rmd) - hi
-  - [CREEDSpart1.Rmd](CREEDSpart1.Rmd) - downloads CREEDS data, corresponds to E Flynn's CREEDS tutorial
+  - [CREEDSpart1.Rmd](https://github.com/anniechang215/summer-2018/blob/master/sandbox/CREEDSpart1.Rmd) - downloads CREEDS data, corresponds to E Flynn's CREEDS tutorial
   - [CREEDSpart2.Rmd](CREEDSpart2.Rmd) - further explores CREEDS drug data
   - [ExamineMLSexLabels_AC.Rmd](ExamineMLSexLabels_AC.Rmd) - assesses quality of Toker vs. ALE sex labels
   - [classifier.Rmd](classifier.Rmd) - preps training and testing data for classifier (old version)
