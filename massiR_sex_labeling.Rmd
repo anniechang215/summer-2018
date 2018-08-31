@@ -1,7 +1,7 @@
 ### Function that automatically sex labels studies using massiR
 
-# Input: A study
-# Output: Sex labels
+#### Input: A study
+#### Output: Sex labels
 
 ```{r}
 # download necessary packages
