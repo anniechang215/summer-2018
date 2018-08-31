@@ -1,3 +1,5 @@
+Clusters studies into male and female based on individual study.
+
 ```{r}
 require('MetaIntegrator')
 require('tidyverse')
