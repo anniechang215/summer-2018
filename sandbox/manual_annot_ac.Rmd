@@ -35,7 +35,7 @@ rand_studies <- sample(list_geo_studies, 30, replace = FALSE)
 write.table(data.frame(rand_studies), file = "data/rand_studies_30.txt", sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
 ```
 
-# Now we will examine individual GEO studies.
+#### Now we will examine individual GEO studies.
 ```{r}
 # Download the study and look at the phenotypic data.
 study_id <- "GSE70784" # acetominophen (example)
