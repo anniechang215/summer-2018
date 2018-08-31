@@ -1,4 +1,4 @@
-# plots the updated Toker training and testing data
+Clusters updated Toker training and testing data
 
 ```{r}
 require('MetaIntegrator')
