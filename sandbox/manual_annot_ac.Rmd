@@ -1,4 +1,4 @@
-# This file contains the code for the manual annotation of the studies I am looking at
+Contains code for the manual annotation of select studies
 
 ```{r}
 # Download necessary packages
@@ -100,8 +100,8 @@ summary(apply(extracted_data28006, 2, as.factor))
 ```
 
 GSE5537
-# tissue: tissue:ch1
-# drug: inhibitor:ch1
-# sex: NA
-# disease: characteristics_ch1.1
+#### tissue: tissue:ch1
+#### drug: inhibitor:ch1
+#### sex: NA
+#### disease: characteristics_ch1.1
 
