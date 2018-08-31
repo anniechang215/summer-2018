@@ -1,7 +1,0 @@
-### script for plotting the clusters for the training and testing data for the classifier
-
-#### plot for the train data
-```{r}
-
-```
-

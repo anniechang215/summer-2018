@@ -1,6 +1,0 @@
-
-6/25/2018
-
-Authors: Emily Flynn, Annie Chang
-
-Label drug GEO data. 
