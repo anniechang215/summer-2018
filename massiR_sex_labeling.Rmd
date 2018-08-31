@@ -1,4 +1,4 @@
-### Function that automatically sex labels studies using massiR
+Function that automatically sex labels studies using massiR
 
 #### Input: A study
 #### Output: Sex labels
