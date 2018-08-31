@@ -1,5 +1,5 @@
 # summer-2018
-Collection of files A Chang worked on from June 25 - Aug 31, 2018
+Collection of R files A Chang worked on from June 25 - Aug 31, 2018
 
 - [classifierv2_dataprep.Rmd](classifierv2_dataprep.Rmd) - preps training and testing datasets for classifier
 - [massiR_sex_labeling.Rmd](massiR_sex_labeling.Rmd) - sex labels studies using massiR
