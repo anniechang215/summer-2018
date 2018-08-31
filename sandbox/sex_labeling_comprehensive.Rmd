@@ -1,5 +1,5 @@
 
-# Goal: To sex label non cell-line GPL570 studies and compare amongst ALE, massiR, and Toker.
+(Attempts to) sex label non cell-line GPL570 studies and compare amongst ALE, massiR, and Toker
 
 ```{r}
 isViable <- function(geo_id) {
