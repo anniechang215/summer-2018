@@ -1,5 +1,4 @@
-Goal:
-- Label all samples with DrugBank IDs
+(Attempts to) label samples with DrugBank IDs
 
 ```{r}
 require('tidyverse')
